@@ -1,12 +1,15 @@
 Lab2_Filter/rtl/FIR_FILTER/
 
+Lab1_Sorter/SelectTopK
+Lab1_Sorter/Sort8
+
 # Claude Code
 .claude/
 */.claude/
 
 # DrawIO backup files
 **/.*.drawio.bkp
-
+**/*.drawio
 # LaTeX 編譯產出
 **/report.aux
 **/report.log
