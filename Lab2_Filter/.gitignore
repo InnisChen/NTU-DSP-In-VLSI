@@ -1,17 +1,16 @@
 rtl/FIR_FILTER/
 
 # Claude Code 記憶檔
-.claude/
+# .claude/
 
 figure/
 
 # DrawIO files
-*.drawio
-.*.drawio.bkp
+# *.drawio
+# .*.drawio.bkp
 
 # LaTeX 編譯產出（可由 report.tex 重新產生）
-report.aux
-report.log
-report.out
-report.pdf
-report.toc
+# report.aux
+# report.log
+# report.out
+# report.toc
