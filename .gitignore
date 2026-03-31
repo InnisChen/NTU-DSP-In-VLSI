@@ -1,0 +1,19 @@
+Lab2_Filter/rtl/FIR_FILTER/
+
+# Claude Code
+.claude/
+*/.claude/
+
+# DrawIO backup files
+**/.*.drawio.bkp
+
+# LaTeX 編譯產出
+**/report.aux
+**/report.log
+**/report.out
+**/report.pdf
+**/report.toc
+**/report.synctex.gz
+
+# Vivado/Xilinx 產出
+**/figure/
