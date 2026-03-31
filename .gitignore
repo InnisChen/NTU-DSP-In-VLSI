@@ -11,6 +11,7 @@ Lab1_Sorter/Sort8
 **/.*.drawio.bkp
 **/*.drawio
 # LaTeX 編譯產出
+**/report.tex
 **/report.aux
 **/report.log
 **/report.out
