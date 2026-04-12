@@ -25,8 +25,8 @@ wire [6:0]  F_b = b[6:0];
 wire [7:0]  M_a = {1'b1, F_a};
 wire [7:0]  M_b = {1'b1, F_b};
 
-// --- Sort: ensure big_E >= sml_E ---
-wire swap = (E_a < E_b);
+// --- Sort: ensure |big| >= |sml| (compare exponent then mantissa) ---
+wire swap = ({E_a, F_a} < {E_b, F_b});
 
 wire        S_big = swap ? S_b : S_a;
 wire [7:0]  E_big = swap ? E_b : E_a;

@@ -80,7 +80,7 @@ initial begin
     out_cnt  = 0;
     pass_cnt = 0;
     fail_cnt = 0;
-    out_fd   = $fopen("sim_out.dat", "w");
+    out_fd   = $fopen("C:/Project/DSP in VLSI/Lab3_Interpolator/00_TESTBED/src/sim_out.dat", "w");
 end
 
 // Capture, write, and compare outputs only when IntpOut_valid is high.
@@ -140,8 +140,16 @@ initial begin
         end
     end
 
-    // -- Extra cycles: need >=9 more to capture all 88 valid outputs (m=20 last) --
-    repeat (12) @(negedge clk);
+    // -- Extra cycles: cycle mu 0..5 for last group's remaining outputs,
+    //    then 6 idle cycles.  Total = 12 extra negedge cycles.
+    begin : extra_mu_cycle
+        integer ei;
+        for (ei = 0; ei < 6; ei = ei + 1) begin
+            @(negedge clk);
+            mu = mu_tbl[ei];
+        end
+        repeat (6) @(negedge clk);
+    end
 
     $fclose(out_fd);
 
