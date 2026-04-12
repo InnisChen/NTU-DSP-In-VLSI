@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // BF16_ADD.v  -  BF16 floating-point adder (truncation, no rounding)
 //
 // Format: [15] sign | [14:7] exponent (bias=127) | [6:0] fraction

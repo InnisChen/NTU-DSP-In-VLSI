@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // BF16_MUL.v  -  BF16 floating-point multiplier (truncation, no rounding)
 //
 // Format: [15] sign | [14:7] exponent (bias=127) | [6:0] fraction

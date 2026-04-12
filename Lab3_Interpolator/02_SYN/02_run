@@ -1,1 +1,1 @@
-dc_shell -f syn.tcl
+dc_shell -f syn90.tcl

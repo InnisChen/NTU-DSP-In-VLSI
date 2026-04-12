@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // Interpolator.v  -  2nd-order Farrow structure BF16 interpolator
 //
 // Signal  : x1[m] = cos(2*pi*(m/10+0.5)) + j*sin(...)
@@ -17,10 +18,11 @@
 
 module Interpolator (
     input         clk,
-    input         rst_n,     // active-low async reset
-    input  [31:0] IntpIn,    // {re[15:0], im[15:0]}
+    input         rst_n,       // active-low async reset
+    input  [31:0] IntpIn,      // {re[15:0], im[15:0]}
     input  [15:0] mu,
-    output [31:0] IntpOut
+    output [31:0] IntpOut,
+    output        IntpOut_valid
 );
 
 // =========================================================
@@ -29,7 +31,7 @@ module Interpolator (
 reg [31:0] InReg;
 reg [15:0] mu_reg;
 
-always @(negedge clk or negedge rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         InReg  <= 32'd0;
         mu_reg <= 16'd0;
@@ -44,7 +46,7 @@ end
 // =========================================================
 reg [2:0] cnt;
 
-always @(negedge clk or negedge rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) cnt <= 3'd0;
     else        cnt <= cnt + 3'd1;
 end
@@ -55,7 +57,7 @@ end
 // =========================================================
 reg [31:0] x0, x1, x2;
 
-always @(negedge clk or negedge rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         x0 <= 32'd0;
         x1 <= 32'd0;
@@ -149,11 +151,31 @@ BF16_ADD u_outim (.a(v0_im), .b(t3_im), .result(out_im));
 // =========================================================
 reg [31:0] IntpOut_reg;
 
-always @(negedge clk or negedge rst_n) begin
+always @(posedge clk or negedge rst_n) begin
     if (!rst_n) IntpOut_reg <= 32'd0;
     else        IntpOut_reg <= {out_re, out_im};
 end
 
 assign IntpOut = IntpOut_reg;
+
+// =========================================================
+// 7. IntpOut_valid: assert after 3 x-shifts (pipeline filled)
+// =========================================================
+reg [1:0] shift_cnt;  // saturates at 3
+
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) shift_cnt <= 2'd0;
+    else if (cnt == 3'd7 && shift_cnt != 2'd3)
+        shift_cnt <= shift_cnt + 2'd1;
+end
+
+reg valid_reg;  // pipelined 1 cycle to align with IntpOut_reg
+
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) valid_reg <= 1'b0;
+    else        valid_reg <= (shift_cnt == 2'd3);
+end
+
+assign IntpOut_valid = valid_reg;
 
 endmodule
