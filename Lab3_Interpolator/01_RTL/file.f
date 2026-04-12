@@ -1,0 +1,4 @@
+-sverilog ./BF16_ADD.v
+-sverilog ./BF16_MUL.v
+-sverilog ./Interpolator.v
+-sverilog ../00_TESTBED/TESTBED.v

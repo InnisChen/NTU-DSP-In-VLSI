@@ -1,0 +1,3 @@
+-sverilog ../01_RTL/BF16_ADD.v
+-sverilog ../01_RTL/BF16_MUL.v
+-sverilog ../01_RTL/Interpolator.v
