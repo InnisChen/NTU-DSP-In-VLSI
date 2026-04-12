@@ -1,5 +1,5 @@
 function val = bf16_to_double(x)
-%BF16_TO_DOUBLE  Convert a uint16 BF16 value to double.
+%BF16_TO_DOUBLE  Convert BF16 value(s) to double. Accepts scalar or array.
 %
 %  val = bf16_to_double(x)
 %
@@ -10,9 +10,6 @@ S = double(bitshift(x, -15));
 E = double(bitand(bitshift(x, -7), uint16(255)));
 F = double(bitand(x, uint16(127)));
 
-if E == 0
-    val = 0.0;
-else
-    val = (-1)^S * 2^(E - 127) * (1 + F / 128);
-end
+val = (-1).^S .* 2.^(double(E) - 127) .* (1 + F / 128);
+val(E == 0) = 0;
 end
