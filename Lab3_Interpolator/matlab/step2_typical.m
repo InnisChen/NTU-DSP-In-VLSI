@@ -10,9 +10,7 @@
 
 clear; clc; close all;
 
-% Output figure directory
-fig_dir = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'figure');
-if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
+fig_dir = setup_figure_dir();
 
 % Set LaTeX as default interpreter for all text
 set(groot, 'defaultTextInterpreter',          'latex');
