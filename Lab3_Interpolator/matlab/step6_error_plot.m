@@ -16,6 +16,10 @@
 
 clear; clc; close all;
 
+% Output figure directory
+fig_dir = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'figure');
+if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
+
 set(groot, 'defaultTextInterpreter',          'latex');
 set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
 set(groot, 'defaultLegendInterpreter',        'latex');
@@ -73,6 +77,8 @@ ylabel('Im error', 'FontSize', fs);
 title('Point 9: Im$\{$Verilog$\}$ $-$ Im$\{$BF16 bit-true$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
 grid on; box on; xlim([9.8, 20.2]);
 
+saveas(gcf, fullfile(fig_dir, 'step6_point9.png'));
+
 %% =========================================================
 %% Figure 2 - Point 8 (behav): BF16 output vs. double-precision true
 %% =========================================================
@@ -98,6 +104,8 @@ xlabel('$m + \mu$', 'FontSize', fs);
 ylabel('Im error', 'FontSize', fs);
 title('Point 8 (Behav): Im$\{$BF16 hardware$\}$ $-$ Im$\{$double-precision$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
 grid on; box on; xlim([9.8, 20.2]);
+
+saveas(gcf, fullfile(fig_dir, 'step6_point8_behav.png'));
 
 %% =========================================================
 %% Figure 3 - Point 8 (post-syn): same analysis for post-synthesis
@@ -127,6 +135,7 @@ if isfile(POSTSYN_DAT)
     ylabel('Im error', 'FontSize', fs);
     title('Point 8 (Post-syn): Im$\{$BF16 hardware$\}$ $-$ Im$\{$double-precision$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
     grid on; box on; xlim([9.8, 20.2]);
+    saveas(gcf, fullfile(fig_dir, 'step6_point8_postsyn.png'));
 else
     fprintf('\n[INFO] %s not found. Run post-synthesis simulation first,\n', POSTSYN_DAT);
     fprintf('       then copy sim_out.dat to sim_out_postsyn.dat.\n');

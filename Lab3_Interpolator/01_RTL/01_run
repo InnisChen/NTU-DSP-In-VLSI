@@ -1,1 +1,3 @@
-vcs -full64 -debug_access+all -R +v2k -f file.f
+vcs -full64 -debug_access+all -R +v2k -f file.f \
+    -P $VERDI_HOME/share/PLI/VCS/linux64/novas.tab \
+    $VERDI_HOME/share/PLI/VCS/linux64/pli.a

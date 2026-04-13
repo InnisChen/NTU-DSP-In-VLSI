@@ -10,6 +10,10 @@
 
 clear; clc; close all;
 
+% Output figure directory
+fig_dir = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'figure');
+if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
+
 % Set LaTeX as default interpreter for all text
 set(groot, 'defaultTextInterpreter',          'latex');
 set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
@@ -100,6 +104,8 @@ legend('Location', 'best', 'FontSize', fs-1);
 grid on; box on;
 xlim([9.8, 20.2]);
 
+saveas(gcf, fullfile(fig_dir, 'step1_waveform.png'));
+
 %% Figure 2: Absolute Error
 err_linear = abs(true_vec - linear_vec);
 err_2nd    = abs(true_vec - sec_vec);
@@ -117,6 +123,8 @@ title('Step 1: Absolute Error ($10 \leq m \leq 20$,  $\mu = 0, \frac{1}{8}, \ldo
 legend('Location', 'best', 'FontSize', fs);
 grid on; box on;
 xlim([9.8, 20.2]);
+
+saveas(gcf, fullfile(fig_dir, 'step1_error.png'));
 
 %% Console summary
 fprintf('=== Step 1 Summary ===\n');

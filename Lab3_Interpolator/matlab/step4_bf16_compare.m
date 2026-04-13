@@ -20,6 +20,10 @@
 
 clear; clc; close all;
 
+% Output figure directory
+fig_dir = fullfile(fileparts(fileparts(mfilename('fullpath'))), 'figure');
+if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
+
 set(groot, 'defaultTextInterpreter',          'latex');
 set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
 set(groot, 'defaultLegendInterpreter',        'latex');
@@ -151,6 +155,8 @@ title('Step 4: Imaginary Part of $\hat{x}_1[m+\mu]$', 'FontSize', fs);
 legend('Location', 'best', 'FontSize', fs-1);
 grid on; box on; xlim([9.8, 20.2]);
 
+saveas(gcf, fullfile(fig_dir, 'step4_waveform.png'));
+
 %% Figure 2: BF16 vs Double difference (real / imag separated)
 figure('Name', 'Step4 - BF16 vs Double Error', 'Position', [200, 200, 1100, 700]);
 
@@ -167,6 +173,8 @@ xlabel('$m + \mu$', 'FontSize', fs);
 ylabel('Imaginary part difference', 'FontSize', fs);
 title('Step 4: Imaginary Part --- Double $-$ BF16 ($10 \leq m \leq 20$)', 'FontSize', fs);
 grid on; box on; xlim([9.8, 20.2]);
+
+saveas(gcf, fullfile(fig_dir, 'step4_error.png'));
 
 %% Console summary
 fprintf('=== Step 4 Summary ===\n');
