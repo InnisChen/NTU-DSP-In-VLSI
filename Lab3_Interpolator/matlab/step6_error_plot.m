@@ -78,35 +78,35 @@ grid on; box on; xlim([9.8, 20.2]);
 saveas(gcf, fullfile(fig_dir, 'step6_point9.png'));
 
 %% =========================================================
-%% Figure 2 - Point 8 (behav): BF16 output vs. double-precision true
+%% Figure 2 - Point 6: BF16 behav output vs. double-precision true
 %% =========================================================
 err8_re = real(exp_double) - real(true_double);
 err8_im = imag(exp_double) - imag(true_double);
 
-fprintf('\n=== Point 8: BF16 output vs. double-precision true ===\n');
+fprintf('\n=== Point 6: BF16 behav output vs. double-precision true ===\n');
 fprintf('Max |Re error|: %.4e\n', max(abs(err8_re)));
 fprintf('Max |Im error|: %.4e\n', max(abs(err8_im)));
 
-figure('Name', 'Point8 - BF16 behav vs double-precision', 'Position', [100, 100, 1100, 700]);
+figure('Name', 'Point6 - BF16 behav vs double-precision', 'Position', [100, 100, 1100, 700]);
 
 subplot(2, 1, 1);
 plot(t_axis, err8_re, 'r-o', 'MarkerSize', 3, 'LineWidth', 1);
 xlabel('$m + \mu$', 'FontSize', fs);
 ylabel('Re error', 'FontSize', fs);
-title('Point 8 (Behav): Re$\{$BF16 hardware$\}$ $-$ Re$\{$double-precision$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
+title('Point 6: Re$\{$BF16 hardware$\}$ $-$ Re$\{$double-precision$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
 grid on; box on; xlim([9.8, 20.2]);
 
 subplot(2, 1, 2);
 plot(t_axis, err8_im, 'b-o', 'MarkerSize', 3, 'LineWidth', 1);
 xlabel('$m + \mu$', 'FontSize', fs);
 ylabel('Im error', 'FontSize', fs);
-title('Point 8 (Behav): Im$\{$BF16 hardware$\}$ $-$ Im$\{$double-precision$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
+title('Point 6: Im$\{$BF16 hardware$\}$ $-$ Im$\{$double-precision$\}$  ($10 \leq m \leq 20$)', 'FontSize', fs);
 grid on; box on; xlim([9.8, 20.2]);
 
-saveas(gcf, fullfile(fig_dir, 'step6_point8_behav.png'));
+saveas(gcf, fullfile(fig_dir, 'step6_point6.png'));
 
 %% =========================================================
-%% Figure 3 - Point 8 (post-syn): same analysis for post-synthesis
+%% Figure 3 - Point 8: BF16 post-syn output vs. double-precision true
 %% =========================================================
 if isfile(POSTSYN_DAT)
     postsyn_reordered = reorder_by_exp(read_dat(POSTSYN_DAT));
@@ -139,7 +139,7 @@ xlabel('$m + \mu$', 'FontSize', fs);
 ylabel('Im error', 'FontSize', fs);
 title(['Point 8 (' postsyn_label '): Im$\{$BF16 hardware$\}$ $-$ Im$\{$double-precision$\}$  ($10 \leq m \leq 20$)'], 'FontSize', fs);
 grid on; box on; xlim([9.8, 20.2]);
-saveas(gcf, fullfile(fig_dir, 'step6_point8_postsyn.png'));
+saveas(gcf, fullfile(fig_dir, 'step6_point8.png'));
 
 % =========================================================
 % Local functions (must be after all script code in MATLAB)
