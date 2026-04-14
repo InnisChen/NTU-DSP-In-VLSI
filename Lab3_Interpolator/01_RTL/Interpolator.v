@@ -6,13 +6,13 @@
 // mu      : [15:0] BF16 fractional delay, updates every clock cycle (0,1/8,...,7/8)
 // IntpOut : {re[15:0], im[15:0]}  BF16 complex interpolated output
 //
-// All flip-flops: negedge clk, active-low async rst_n
+// All flip-flops: posedge clk, active-low async rst_n
 //
 // Farrow coefficients (hardware-sharing, zero multipliers in coeff block):
-//   h0 = 0.5*x(m)     via exponent-1
-//   h2 = 0.5*x(m+2)   via exponent-1
-//   v2 = (h0 - x(m+1)) + h2
-//   v1 = -(x(m)+h0) + 2*x(m+1) + (-h2)   [2*x via exponent+1]
+//   0.5*x(m)   via exponent-1
+//   0.5*x(m+2) via exponent-1
+//   v2 = (0.5*x(m) - x(m+1)) + 0.5*x(m+2)
+//   v1 = -(x(m) + 0.5*x(m)) + 2*x(m+1) + (-0.5*x(m+2))   [2*x via exponent+1]
 //   v0 = x(m)
 // Horner: out = v0 + mu*(v1 + mu*v2)   [2x BF16_MUL + 2x BF16_ADD]
 

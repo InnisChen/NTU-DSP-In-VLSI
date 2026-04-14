@@ -56,20 +56,21 @@ for mi = 1:n_m
     s2_re = double_to_bf16(real(s2d));  s2_im = double_to_bf16(imag(s2d));
 
     % --- Farrow coefficients in BF16 (computed once per m) ---
-    % Shared terms: half_x0 = 0.5*x0,  half_x2 = 0.5*x2  (exponent-1, no multiplier)
+    % s0=x(m), s1=x(m+1), s2=x(m+2)
+    % 0.5*x(m) and 0.5*x(m+2) via exponent-1 (no multiplier)
     h0_re = bf16_half(s0_re);
     h0_im = bf16_half(s0_im);
     h2_re = bf16_half(s2_re);
     h2_im = bf16_half(s2_im);
 
-    % v2 = 0.5*x0 + (-x1) + 0.5*x2
+    % v2 = 0.5*x(m) + (-x(m+1)) + 0.5*x(m+2)
     v2_re = bf16_add(bf16_add(h0_re, bf16_neg(s1_re)), h2_re);
     v2_im = bf16_add(bf16_add(h0_im, bf16_neg(s1_im)), h2_im);
 
-    % v1 = -(x0 + 0.5*x0) + (2*x1) + (-0.5*x2)
-    %      -(x0 + half_x0) replaces -1.5*x0  -> adder only
-    %      2*x1 via exponent+1               -> no multiplier
-    %      (-0.5*x2) reuses h2 with sign flip
+    % v1 = -(x(m) + 0.5*x(m)) + 2*x(m+1) + (-0.5*x(m+2))
+    %      -(x(m) + 0.5*x(m)) replaces -1.5*x(m)  -> adder only
+    %      2*x(m+1) via exponent+1                 -> no multiplier
+    %      (-0.5*x(m+2)) reuses h2_re/h2_im with sign flip
     v1_re = bf16_add(bf16_add(bf16_neg(bf16_add(s0_re, h0_re)), ...
                               bf16_double(s1_re)), bf16_neg(h2_re));
     v1_im = bf16_add(bf16_add(bf16_neg(bf16_add(s0_im, h0_im)), ...
