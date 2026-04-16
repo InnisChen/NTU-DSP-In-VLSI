@@ -93,28 +93,25 @@ end
 fprintf('\n=> Minimum aw = %d\n\n', aw_min);
 
 %% Elementary angle table
+% LUT entries are all in (0, pi/4] < 1: only fractional bits needed.
+% Format: unsigned aw_min bits  (no sign, no integer bits)
+% Theta accumulator uses 1S+2I+awF; LUT values are zero-extended when added.
 fprintf('--- Elementary Angles atan(2^(-i)) ---\n');
-fprintf('Format: 1S + 2I + %dF  (total %d bits)\n\n', aw_min, aw_min+3);
-fprintf('  i  | Float (rad)        | Fixed-point int | Binary (S.II.FF...)\n');
-fprintf('-----|--------------------|-----------------|-----------------------\n');
+fprintf('LUT format : unsigned %dF  (all values < pi/4 < 1, no integer bits needed)\n', aw_min);
+fprintf('Accumulator: 1S + 2I + %dF  (range [-pi, pi] needs 2 integer bits)\n\n', aw_min);
+fprintf('  i  | Float (rad)        | Unsigned int | Binary (0.FFFF...)\n');
+fprintf('-----|--------------------|--------------|-----------------------\n');
 
 angles_fp  = atan(2.^(-(0:S_min-1)));
-angles_int = round(angles_fp * 2^aw_min);  % quantized integers
+angles_int = round(angles_fp * 2^aw_min);   % all positive integers
 
 for i = 0:S_min-1
     a_fp  = angles_fp(i+1);
-    a_int = angles_int(i+1);
-    % Convert to signed binary string (aw_min+3 bits: 1S+2I+aw_minF)
-    nbits   = aw_min + 3;
-    if a_int < 0
-        a_uint = a_int + 2^nbits;  % 2's complement
-    else
-        a_uint = a_int;
-    end
-    bin_str = dec2bin(a_uint, nbits);
-    % Insert decimal point after bit 3 (S.II . FFFF...)
-    bin_fmt = [bin_str(1), '.', bin_str(2:3), '.', bin_str(4:end)];
-    fprintf('  %2d | %18.15f | %15d | %s\n', i, a_fp, a_int, bin_fmt);
+    a_int = angles_int(i+1);   % always positive
+    bin_str = dec2bin(a_int, aw_min);
+    % Format as 0.FFFF... (unsigned fractional)
+    bin_fmt = ['0.', bin_str];
+    fprintf('  %2d | %18.15f | %12d | %s\n', i, a_fp, a_int, bin_fmt);
 end
 
 %% Final verification: S_min + aw_min combined
