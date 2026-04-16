@@ -8,7 +8,7 @@
 %
 % First determine integer word-length from max signal growth.
 % Then sweep w = 8..20 (fractional bits for X/Y).
-% Fix S=30, aw=20 (so these don't limit accuracy).
+% Fix S=30, aw=Inf (floating-point angles, isolate X/Y word-length effect).
 % Metric: average |phase_error| over 10 inputs.
 % Goal: find minimum w such that avg error < 2^(-9) = 1/512.
 
@@ -22,7 +22,7 @@ set(groot, 'defaultLegendInterpreter',        'latex');
 
 %% Test inputs
 m_vec    = 0:9;
-alpha_m  = (4*m_vec + 2) / 20 * pi;   % angles in (0, pi), spanning all quadrants
+alpha_m  = (4*m_vec + 2) / 20 * pi;   % 18..342 deg, spans all 4 quadrants; atan2 maps to (-pi, pi]
 X_true   = cos(alpha_m);
 Y_true   = sin(alpha_m);
 theta_ref = atan2(Y_true, X_true);     % = alpha_m (reference)
@@ -52,10 +52,11 @@ fprintf('\n\n');
 
 %% Fixed parameters for this sweep
 S_fix  = 30;   % enough micro-rotations
-aw_fix = 20;   % enough angle precision
+aw_fix = Inf;  % floating-point angles: isolate X/Y word-length effect only
 
 %% Sweep w = 8..20
-w_vec    = 8:20;
+w_vec    = 1:16;
+%w_vec    = 8:20;
 avg_err  = zeros(size(w_vec));
 threshold = 2^(-9);
 
@@ -106,7 +107,7 @@ hold off;
 
 xlabel('Fractional word-length $w$ (bits)', 'FontSize', fs);
 ylabel('Average $|\phi_{error}|$ (rad)', 'FontSize', fs);
-title('Step 2: Phase Error vs. X/Y Word-Length ($S=30$, $a_w=20$)', 'FontSize', fs);
+title('Step 2: Phase Error vs. X/Y Word-Length ($S=30$, floating-point angles)', 'FontSize', fs);
 legend('Location', 'southwest', 'FontSize', fs-1);
 grid on; box on;
 xlim([w_vec(1)-0.5, w_vec(end)+0.5]);
