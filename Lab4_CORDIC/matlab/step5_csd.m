@@ -23,12 +23,17 @@ set(groot, 'defaultLegendInterpreter',        'latex');
 mat4 = fullfile(fileparts(mfilename('fullpath')), 'step4_result.mat');
 load(mat4, 'N_mag_min');
 
-fprintf('=== Step 5: CSD Scaling Factor ===\n');
-fprintf('Using N_mag_min = %d (from Step 4)\n\n', N_mag_min);
+% N_mag can be set larger than N_mag_min for a more converged S(N).
+% Step 9 only requires S >= N_mag_min, so any N >= N_mag_min is valid.
+% A larger N gives S(N) closer to S(inf) ~= 0.6073, reducing CSD error.
+N_mag = 10;   % design choice: >= N_mag_min (= 6)
 
-%% Compute true scaling factor S(N_mag_min)
-S_true = prod(1 ./ sqrt(1 + 2.^(-2*(0:N_mag_min-1))));
-fprintf('S_true = S(%d) = %.15f\n\n', N_mag_min, S_true);
+fprintf('=== Step 5: CSD Scaling Factor ===\n');
+fprintf('N_mag_min (Step 4) = %d,  using N_mag = %d\n\n', N_mag_min, N_mag);
+
+%% Compute true scaling factor S(N_mag)
+S_true = prod(1 ./ sqrt(1 + 2.^(-2*(0:N_mag-1))));
+fprintf('S_true = S(%d) = %.15f\n\n', N_mag, S_true);
 
 threshold = 0.001;   % 0.1%
 
@@ -105,7 +110,7 @@ fprintf('\n  (P=+1, N=-1, 0=0)\n\n');
 
 %% Save result
 save(fullfile(fileparts(mfilename('fullpath')), 'step5_result.mat'), ...
-     'fw_min', 'S_true', 'S_csd', 'n_nonzero', 'n_adders');
+     'fw_min', 'N_mag', 'S_true', 'S_csd', 'n_nonzero', 'n_adders');
 fprintf('Saved fw_min=%d, n_adders=%d to step5_result.mat\n', fw_min, n_adders);
 
 %% Figure: CSD error vs fw
@@ -124,7 +129,7 @@ hold off;
 xlabel('CSD fractional word-length $f_w$ (bits)', 'FontSize', fs);
 ylabel('Relative error of $S(N)$ approximation', 'FontSize', fs);
 title(sprintf('Step 5: CSD Approximation Error vs. Word-Length ($N=%d$, $S_{true}=%.4f$)', ...
-      N_mag_min, S_true), 'FontSize', fs);
+      N_mag, S_true), 'FontSize', fs);
 legend('Location', 'southwest', 'FontSize', fs-1);
 grid on; box on;
 xlim([fw_vec(1)-0.5, fw_vec(end)+0.5]);
