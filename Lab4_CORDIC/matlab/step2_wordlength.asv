@@ -50,10 +50,11 @@ fprintf('\n\n');
 
 %% Fixed parameters for this sweep
 S_fix  = 30;   % enough micro-rotations
-aw_fix = Inf;  % floating-point angles: isolate X/Y word-length effect only. angle_bit數無限大(不量化)
+aw_fix = Inf;  % floating-point angles: isolate X/Y word-length effect only
 
-%% Sweep w = 1..16
+%% Sweep w = 8..20
 w_vec    = 1:16;
+%w_vec    = 8:20;
 avg_err  = zeros(size(w_vec));
 threshold = 2^(-9);
 
@@ -68,8 +69,8 @@ for wi = 1:length(w_vec)
 end
 
 % Find minimum w meeting the threshold
-idx_ok = find(avg_err < threshold, 1, 'first'); %第一個符合的bit數
-if isempty(idx_ok)  %都找不到
+idx_ok = find(avg_err < threshold, 1, 'first');
+if isempty(idx_ok)
     w_min = NaN;
     fprintf('[WARNING] No w in %d..%d achieves avg error < 2^(-9)\n', w_vec(1), w_vec(end));
 else

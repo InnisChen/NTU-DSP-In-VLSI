@@ -3,8 +3,8 @@
 % Student parameters: I=7, beta=2
 %
 % Inputs are quantized with w from Step 2 (loaded from step2_result.mat).
-% Part A: sweep S = 2,4,...,30 (even only, for Step 7 S/2-unfolding)
-%         with floating-point angles to isolate effect of S.
+% Part A: sweep N = 1..20 to find minimum N meeting threshold,
+%         then round up to even S for Step 7 S/2-unfolding.
 % Part B: sweep aw = 4..20 with fixed S from Part A
 %         to determine angle word-length.
 % Metric: average |phase_error| over 10 quantized inputs.
@@ -38,8 +38,8 @@ Y_q = floor(Y_true * 2^w) / 2^w;
 
 threshold = 2^(-9);
 
-%% Part A: Sweep S (even numbers), aw = Inf (floating-point angles)
-S_vec   = 2:2:30;
+%% Part A: Sweep N = 1..20, aw = Inf (floating-point angles)
+S_vec   = 1:20;
 err_S   = zeros(size(S_vec));
 
 for si = 1:length(S_vec)
@@ -52,18 +52,20 @@ for si = 1:length(S_vec)
     err_S(si) = err_sum / length(m_vec);
 end
 
-idx_S = find(err_S < threshold, 1, 'first');
-S_min = S_vec(idx_S);
+idx_S   = find(err_S < threshold, 1, 'first');
+S_min   = S_vec(idx_S);
+% Round up to even for Step 7 S/2-unfolding architecture.
+S_min_even = S_min + mod(S_min, 2);
 
-fprintf('--- Part A: S sweep (floating-point angles) ---\n');
-fprintf('  S  | avg |phase_error| (rad)  | Pass?\n');
+fprintf('--- Part A: N sweep (floating-point angles) ---\n');
+fprintf('  N  | avg |phase_error| (rad)  | Pass?\n');
 fprintf('-----|-------------------------|-------\n');
 for si = 1:length(S_vec)
     pass_str = '';
     if err_S(si) < threshold, pass_str = '<-- OK'; end
     fprintf('  %2d | %22.6e  | %s\n', S_vec(si), err_S(si), pass_str);
 end
-fprintf('\n=> Minimum even S = %d\n\n', S_min);
+fprintf('\n=> Minimum N = %d  =>  S = %d (rounded up to even for Step 7)\n\n', S_min, S_min_even);
 
 %% Part B: Sweep aw, fixed S = S_min
 aw_vec  = 4:20;
@@ -130,28 +132,63 @@ else
     fprintf('=> FAIL: increase S or aw\n\n');
 end
 
-%% Save results
-save(fullfile(fileparts(mfilename('fullpath')), 'step3_result.mat'), 'S_min', 'aw_min');
-fprintf('Saved S_min=%d, aw_min=%d to step3_result.mat\n', S_min, aw_min);
+%% Generate Verilog test vectors (use final S_min_even, w, aw_min)
+% inX_int, inY_int : quantized inputs  (1S+1I+wF integer domain)
+% theta_ref_int    : fixed-point CORDIC output (1S+2I+awF integer domain)
+inX_int       = zeros(1, length(m_vec));
+inY_int       = zeros(1, length(m_vec));
+theta_ref_int = zeros(1, length(m_vec));
 
-%% Figure A: avg error vs S
+max_int =  2^(w+1) - 1;
+min_int = -2^(w+1);
+
+for k = 1:length(m_vec)
+    Xi = floor(X_true(k) * 2^w);
+    Yi = floor(Y_true(k) * 2^w);
+    Xi = max(min_int, min(max_int, Xi));
+    Yi = max(min_int, min(max_int, Yi));
+    inX_int(k) = Xi;
+    inY_int(k) = Yi;
+
+    [theta_out, ~]    = cordic_fixedpoint(X_true(k), Y_true(k), S_min_even, w, aw_min);
+    theta_ref_int(k)  = round(theta_out * 2^aw_min);
+end
+
+% Write text file for Verilog $fscanf
+% Format: one line per test case -> inX_int  inY_int  theta_ref_int (signed decimal)
+tv_dir  = fullfile(fileparts(mfilename('fullpath')), '..', '00_TESTBED', 'src');
+if ~exist(tv_dir, 'dir'), mkdir(tv_dir); end
+tv_path = fullfile(tv_dir, 'test_vectors.dat');
+fid = fopen(tv_path, 'w');
+for k = 1:length(m_vec)
+    fprintf(fid, '%d %d %d\n', inX_int(k), inY_int(k), theta_ref_int(k));
+end
+fclose(fid);
+fprintf('Written test_vectors.dat (S=%d, w=%d, aw=%d)\n', S_min_even, w, aw_min);
+
+%% Save results
+save(fullfile(fileparts(mfilename('fullpath')), 'step3_result.mat'), ...
+     'S_min', 'S_min_even', 'aw_min', 'inX_int', 'inY_int', 'theta_ref_int', 'm_vec');
+fprintf('Saved S_min=%d, S_min_even=%d, aw_min=%d to step3_result.mat\n', S_min, S_min_even, aw_min);
+
+%% Figure A: avg phase error vs N
 fs = 13;
-figure('Name', 'Step3 - Error vs S', 'Position', [100, 100, 900, 500]);
+figure('Name', 'Step3 - Error vs N', 'Position', [100, 100, 900, 500]);
 semilogy(S_vec, err_S, 'b-o', 'MarkerSize', 6, 'LineWidth', 1.5, ...
          'DisplayName', 'Avg $|\phi_{err}|$');
 hold on;
 yline(threshold, 'r--', 'LineWidth', 1.2, ...
       'DisplayName', sprintf('Threshold $2^{-9}$'));
 semilogy(S_min, err_S(idx_S), 'gs', 'MarkerSize', 10, 'LineWidth', 2, ...
-         'DisplayName', sprintf('Min even $S = %d$', S_min));
+         'DisplayName', sprintf('Min $N=%d$, $S=%d$ (even)', S_min, S_min_even));
 hold off;
-xlabel('Number of micro-rotations $S$ (even)', 'FontSize', fs);
+xlabel('Number of micro-rotations $N$', 'FontSize', fs);
 ylabel('Average $|\phi_{error}|$ (rad)', 'FontSize', fs);
-title(sprintf('Step 3A: Phase Error vs. $S$ ($w=%d$, floating-point angles)', w), 'FontSize', fs);
+title(sprintf('Step 3A: Phase Error vs. $N$ ($w=%d$, floating-point angles)', w), 'FontSize', fs);
 legend('Location', 'southwest', 'FontSize', fs-1);
 grid on; box on;
-xlim([S_vec(1)-1, S_vec(end)+1]);
-exportgraphics(gcf, fullfile(fig_dir, 'step3_error_vs_S.png'), 'Resolution', 150);
+xlim([S_vec(1)-0.5, S_vec(end)+0.5]);
+exportgraphics(gcf, fullfile(fig_dir, 'step3_error_vs_N.png'), 'Resolution', 150);
 
 %% Figure B: avg error vs aw
 figure('Name', 'Step3 - Error vs aw', 'Position', [150, 150, 900, 500]);
