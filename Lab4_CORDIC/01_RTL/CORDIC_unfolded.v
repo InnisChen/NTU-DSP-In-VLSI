@@ -34,15 +34,37 @@ localparam signed [TW-1:0] A7 = 11'd2;
 localparam signed [TW-1:0] A8 = 11'd1;
 localparam signed [TW-1:0] A9 = 11'd0;
 
+
+// -----------------------------------------------------------------------
+// input DFF
+// Pipeline register between initial stage and first half (stages 0..4)
+// -----------------------------------------------------------------------
+
+reg signed [W-1:0]  X_indff, Y_indff;
+reg                  v_indff;
+
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        X_indff <= 0;
+        Y_indff <= 0;
+        v_indff <= 1'b0;
+    end else begin
+        X_indff <= inX;
+        Y_indff <= inY;
+        v_indff <= in_valid;
+    end
+end
+
+
 // -----------------------------------------------------------------------
 // Initial stage: quadrant mapping (combinational)
 //   Q1/Q4 (X>=0): pass through, theta_init = 0
 //   Q2    (X<0, Y>=0): negate both, theta_init = +pi
 //   Q3    (X<0, Y<0):  negate both, theta_init = -pi
 // -----------------------------------------------------------------------
-wire signed [W-1:0]  X_init = inX[W-1] ? -inX : inX;
-wire signed [W-1:0]  Y_init = inX[W-1] ? -inY : inY;
-wire signed [TW-1:0] T_init = inX[W-1] ? (inY[W-1] ? PI_NEG : PI_POS) : {TW{1'b0}};
+wire signed [W-1:0]  X_init = X_indff[W-1] ? -X_indff : X_indff;
+wire signed [W-1:0]  Y_init = X_indff[W-1] ? -Y_indff : Y_indff;
+wire signed [TW-1:0] T_init = X_indff[W-1] ? (Y_indff[W-1] ? PI_NEG : PI_POS) : {TW{1'b0}};
 
 // -----------------------------------------------------------------------
 // First half: stages 0..4 (combinational)
@@ -91,7 +113,7 @@ always @(posedge clk or negedge rst_n) begin
         X_pipe <= Xs4;
         Y_pipe <= Ys4;
         T_pipe <= Ts4;
-        v_pipe <= in_valid;
+        v_pipe <= v_indff;
     end
 end
 

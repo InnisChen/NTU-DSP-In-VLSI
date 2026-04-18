@@ -9,8 +9,8 @@
 //   USE_MAG       = Step 9 magnitude+theta (10 inputs, both outputs)
 // ============================================================
 //`define USE_ITERATIVE
-`define USE_UNFOLDED
-// `define USE_MAG
+//`define USE_UNFOLDED
+ `define USE_MAG
 
 module TESTBED;
 
@@ -21,11 +21,10 @@ parameter CLK_PERIOD = 10;   // 10 ns -> 100 MHz
 
 // DUT ports
 reg                   clk, rst_n;
-reg  signed [W-1:0]  inX, inY;
 reg                   in_valid;
-wire signed [TW-1:0] outTheta;
+reg  signed [W-1:0]  inX, inY;
 wire                  out_valid;
-
+wire signed [TW-1:0] outTheta;
 `ifdef USE_MAG
 wire signed [W-1:0]  outMag;
 `endif
@@ -159,7 +158,8 @@ initial begin
         @(negedge clk);
         in_valid = 0;
 
-        @(posedge out_valid);
+        // @(posedge out_valid);
+        @(posedge clk);
         @(negedge clk);
 
         theta_out_real = $itor($signed(outTheta)) / SCALE_TH;
@@ -209,6 +209,9 @@ initial begin
     $display("Threshold = 2^-9 rad = %.6f rad = %.4f deg",
         1.0/512.0, 180.0/(512.0*PI));
 `endif
+
+    @(posedge clk); //確保最後一組輸出有顯示出來
+    @(posedge clk);
     $finish;
 end
 
