@@ -171,6 +171,43 @@ save(fullfile(fileparts(mfilename('fullpath')), 'step3_result.mat'), ...
      'S_min', 'S_min_even', 'aw_min', 'inX_int', 'inY_int', 'theta_ref_int', 'm_vec');
 fprintf('Saved S_min=%d, S_min_even=%d, aw_min=%d to step3_result.mat\n', S_min, S_min_even, aw_min);
 
+%% Generate golden answers for TESTBED comparison (Step 6, 7, theta part of Step 9)
+% All three share the same arctangent algorithm; S and aw are now determined.
+golden_dir = fullfile(fileparts(mfilename('fullpath')), '..', '00_TESTBED', 'src');
+if ~exist(golden_dir, 'dir'), mkdir(golden_dir); end
+
+S   = S_min_even;
+TW  = 1 + 2 + aw_min;   % theta word-length: 1S + 2I + awF
+
+% golden_step6.dat: 4 entries for USE_ITERATIVE (m = 0, 3, 6, 9)
+m_step6 = [0; 3; 6; 9];
+fid = fopen(fullfile(golden_dir, 'golden_step6.dat'), 'w');
+for k = 1:length(m_step6)
+    m = m_step6(k);
+    [th, ~] = cordic_fixedpoint(inX_int(m+1) / 2^w, inY_int(m+1) / 2^w, S, w, aw_min);
+    fprintf(fid, '%03X\n', mod(round(th * 2^aw_min), 2^TW));
+end
+fclose(fid);
+fprintf('Written golden_step6.dat  (4 entries, m=0,3,6,9)\n');
+
+% golden_step7.dat: 10 entries for USE_UNFOLDED (m = 0..9)
+fid = fopen(fullfile(golden_dir, 'golden_step7.dat'), 'w');
+for m = 0:9
+    [th, ~] = cordic_fixedpoint(inX_int(m+1) / 2^w, inY_int(m+1) / 2^w, S, w, aw_min);
+    fprintf(fid, '%03X\n', mod(round(th * 2^aw_min), 2^TW));
+end
+fclose(fid);
+fprintf('Written golden_step7.dat  (10 entries, m=0..9)\n');
+
+% golden_step9_theta.dat: 10 entries, identical algorithm to step7
+fid = fopen(fullfile(golden_dir, 'golden_step9_theta.dat'), 'w');
+for m = 0:9
+    [th, ~] = cordic_fixedpoint(inX_int(m+1) / 2^w, inY_int(m+1) / 2^w, S, w, aw_min);
+    fprintf(fid, '%03X\n', mod(round(th * 2^aw_min), 2^TW));
+end
+fclose(fid);
+fprintf('Written golden_step9_theta.dat  (10 entries, m=0..9)\n');
+
 %% Figure A: avg phase error vs N
 fs = 13;
 figure('Name', 'Step3 - Error vs N', 'Position', [100, 100, 900, 500]);

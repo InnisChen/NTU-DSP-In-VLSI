@@ -13,6 +13,7 @@ set(groot, 'defaultLegendInterpreter',        'latex');
 
 %% Parameters (must match Verilog)
 aw       = 8;
+TW       = 11;
 SCALE_TH = 2^aw;   % 256
 
 %% Load simulation results from Verilog
@@ -23,21 +24,22 @@ fid = fopen(dat_path, 'r');
 if fid < 0
     error('Cannot open %s\nRun Verilog simulation (USE_UNFOLDED) first.', dat_path);
 end
-raw = textscan(fid, '%d %d %d %d', 'CommentStyle', '#');
+raw = textscan(fid, '%x', 'CommentStyle', '#');
 fclose(fid);
 
-m_idx        = double(raw{1});
-outTheta_int = double(raw{2});
-inX_int      = double(raw{3});
-inY_int      = double(raw{4});
-
-N = length(m_idx);
+outTheta_int = double(raw{1});
+% 11-bit 2's complement → signed
+outTheta_int(outTheta_int >= 2^(TW-1)) = outTheta_int(outTheta_int >= 2^(TW-1)) - 2^TW;
+N = length(outTheta_int);
 fprintf('Loaded %d test cases from %s\n\n', N, dat_path);
+
+% Test inputs (must match TESTBED.v, m = 0..9)
+m_idx = (0:9)';
 
 %% Compute reference and error
 % Reference = true float alpha_m (consistent with step3 MATLAB analysis)
 alpha_all = (4*(0:9) + 2) / 20 * pi;
-theta_ref = alpha_all(m_idx + 1)';            % true floating-point angle (rad)
+theta_ref = alpha_all(m_idx + 1)';           % true floating-point angle (rad)
 theta_out = outTheta_int / SCALE_TH;          % Verilog output (rad)
 err_theta = theta_out - theta_ref;
 err_theta = mod(err_theta + pi, 2*pi) - pi;   % wrap to [-pi, pi]

@@ -20,6 +20,8 @@ aw       = 8;
 S        = 10;
 SCALE_XY = 2^w;    % 512
 SCALE_TH = 2^aw;   % 256
+W        = w + 2;          % X/Y word-length: 1S + 1I + wF = 11 bits
+TW       = 1 + 2 + aw;    % theta word-length: 1S + 2I + awF = 11 bits
 
 %% Load simulation results from Verilog
 dat_path = fullfile(fileparts(mfilename('fullpath')), ...
@@ -29,17 +31,21 @@ fid = fopen(dat_path, 'r');
 if fid < 0
     error('Cannot open %s\nRun Verilog simulation (USE_MAG) first.', dat_path);
 end
-raw = textscan(fid, '%d %d %d %d %d', 'CommentStyle', '#');
+raw = textscan(fid, '%x %x', 'CommentStyle', '#');
 fclose(fid);
 
-m_idx       = double(raw{1});
-outMag_int  = double(raw{2});
-outTheta_int= double(raw{3});
-inX_int     = double(raw{4});
-inY_int     = double(raw{5});
-
-N = length(m_idx);
+outMag_int   = double(raw{1});
+outTheta_int = double(raw{2});
+% 11-bit 2's complement → signed
+outMag_int(outMag_int     >= 2^(W-1))  = outMag_int(outMag_int     >= 2^(W-1))  - 2^W;
+outTheta_int(outTheta_int >= 2^(TW-1)) = outTheta_int(outTheta_int >= 2^(TW-1)) - 2^TW;
+N = length(outMag_int);
 fprintf('Loaded %d test cases from %s\n\n', N, dat_path);
+
+% Test inputs (must match TESTBED.v, m = 0..9)
+m_idx   = (0:9)';
+inX_int = [ 486;  300;    0; -301; -487; -487; -301;   -1;  300;  486];
+inY_int = [ 158;  414;  512;  414;  158; -159; -415; -512; -415; -159];
 
 mag_out   = outMag_int   / SCALE_XY;
 theta_out = outTheta_int / SCALE_TH;
@@ -48,7 +54,7 @@ theta_out = outTheta_int / SCALE_TH;
 % Both model and hardware use floor truncation -> should match within 1 LSB.
 mag_model = zeros(N, 1);
 for k = 1:N
-    [~, Xi_frac] = cordic_fixedpoint(inX_int(k), inY_int(k), S, w, Inf);
+    [~, Xi_frac] = cordic_fixedpoint(inX_int(k)/SCALE_XY, inY_int(k)/SCALE_XY, S, w, Inf);
     Xi_k = Xi_frac * SCALE_XY;   % Xi in integer domain (float)
     % CSD: A_N = 2^-1 + 2^-3 - 2^-6 - 2^-9  (same truncation as Verilog >>>)
     csd_k = floor(Xi_k/2) + floor(Xi_k/8) - floor(Xi_k/64) - floor(Xi_k/512);
@@ -71,23 +77,18 @@ err_theta = theta_out - theta_ref;
 err_theta = mod(err_theta + pi, 2*pi) - pi;
 
 %% Console table
-fprintf('--- Magnitude: Hardware vs. MATLAB Model ---\n');
-fprintf('  m | out (int) | model(int) | diff(LSB) | err_vs_true(%%)\n');
-fprintf('----|-----------|------------|-----------|---------------\n');
+fprintf('  m | mag_out  | mag_true | err_mag(%%) | theta_out(deg) | theta_ref(deg) | err_theta(rad)\n');
+fprintf('----|----------|----------|------------|----------------|----------------|---------------\n');
 for k = 1:N
-    fprintf('  %d | %9.0f | %10.0f | %9d | %+13.4f\n', ...
-        m_idx(k), outMag_int(k), mag_model(k)*SCALE_XY, ...
-        err_model_lsb(k), err_true_pct(k));
+    fprintf('  %d | %8.5f | %8.5f | %+10.4f | %14.4f | %14.4f | %+14.6e\n', ...
+        m_idx(k), mag_out(k), mag_true(k), err_true_pct(k), ...
+        theta_out(k)*180/pi, theta_ref(k)*180/pi, err_theta(k));
 end
 
-model_pass = all(abs(err_model_lsb) <= 1);
-fprintf('\nHardware vs model: max diff = %d LSB  -> %s\n', ...
-    max(abs(err_model_lsb)), ternary(model_pass,'PASS','FAIL'));
-fprintf('  (Note: err vs true mag = %.4f%% max, %.4f%% avg\n', ...
-    max(abs(err_true_pct)), mean(abs(err_true_pct)));
-fprintf('   This is CORDIC floor-truncation bias, same in both model and HW)\n\n');
-
+mag_pass   = all(abs(err_true_pct) < 0.1);
 theta_pass = mean(abs(err_theta)) < 2^-9;
+fprintf('\nMagnitude max err = %.4f%%  (threshold 0.1%%)  -> %s\n', ...
+    max(abs(err_true_pct)), ternary(mag_pass,'PASS','FAIL'));
 fprintf('Phase avg |error| = %.4e rad  (threshold 2^-9=%.4e rad)  -> %s\n\n', ...
     mean(abs(err_theta)), 2^-9, ternary(theta_pass,'PASS','FAIL'));
 

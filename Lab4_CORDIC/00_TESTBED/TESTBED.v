@@ -10,7 +10,7 @@
 // ============================================================
 //`define USE_ITERATIVE
 //`define USE_UNFOLDED
- `define USE_MAG
+`define USE_MAG
 
 module TESTBED;
 
@@ -78,6 +78,14 @@ integer sim_fd;
 real    mag_out_real, mag_ref_real, err_mag_pct;
 `endif
 
+// Golden answer arrays (loaded from MATLAB-exported hex files)
+reg [TW-1:0] golden_theta [0:9];
+`ifdef USE_MAG
+reg [W-1:0]  golden_mag   [0:9];
+`endif
+integer mismatch_count;
+integer golden_fd, scan_ret;
+
 initial begin
     SCALE_XY = 512.0;   // 2^9
     SCALE_TH = 256.0;   // 2^8
@@ -100,16 +108,16 @@ initial begin
         alpha_m[i] = (4.0*i + 2.0) / 20.0 * PI;
 
     // --- Configure num_tests per mode ---
-`ifdef USE_MAG
-    num_tests = 10;
-    for (i = 0; i < 10; i = i+1) m_val[i] = i;
-`elsif USE_UNFOLDED
-    num_tests = 10;
-    for (i = 0; i < 10; i = i+1) m_val[i] = i;
-`elsif USE_ITERATIVE
-    num_tests = 4;
-    m_val[0] = 0; m_val[1] = 3; m_val[2] = 6; m_val[3] = 9;
-`endif
+    `ifdef USE_MAG
+        num_tests = 10;
+        for (i = 0; i < 10; i = i+1) m_val[i] = i;
+    `elsif USE_UNFOLDED
+        num_tests = 10;
+        for (i = 0; i < 10; i = i+1) m_val[i] = i;
+    `elsif USE_ITERATIVE
+        num_tests = 4;
+        m_val[0] = 0; m_val[1] = 3; m_val[2] = 6; m_val[3] = 9;
+    `endif
 
     // Reset
     rst_n = 0; inX = 0; inY = 0; in_valid = 0;
@@ -118,36 +126,63 @@ initial begin
     rst_n = 1;
     @(posedge clk); @(negedge clk);
 
+    `ifdef USE_MAG
+        sim_fd = $fopen({`Path, "step9_sim_results.dat"}, "w");
+        if (sim_fd == 0) begin
+            $display("[ERROR] Cannot open step9_sim_results.dat for writing.");
+            $finish;
+        end
+        $fwrite(sim_fd, "# outMag_int  outTheta_int\n");
+        $display("=== Step 9: Magnitude CORDIC (S=%0d, A_N=2^-1+2^-3-2^-6-2^-9) ===", S);
+        $display("  m | alpha (deg) | mag_out  | mag_ref  | err(%%)  | theta_out (deg) | theta_ref (deg)");
+        $display("----|-------------|----------|----------|---------|-----------------|----------------");
+    `elsif USE_UNFOLDED
+        sim_fd = $fopen({`Path, "step7_sim_results.dat"}, "w");
+        if (sim_fd == 0) begin
+            $display("[ERROR] Cannot open step7_sim_results.dat for writing.");
+            $finish;
+        end
+        $fwrite(sim_fd, "# outTheta_int\n");
+        $display("=== Step 7: S/2-Unfolded CORDIC (S=%0d, latency=2 cycles) ===", S);
+        $display("  m | alpha (deg) | theta_out (deg) | theta_ref (deg) | error (deg)");
+        $display("----|-------------|-----------------|-----------------|------------");
+    `elsif USE_ITERATIVE
+        sim_fd = $fopen({`Path, "step6_sim_results.dat"}, "w");
+        if (sim_fd == 0) begin
+            $display("[ERROR] Cannot open step6_sim_results.dat for writing.");
+            $finish;
+        end
+        $fwrite(sim_fd, "# outTheta_int\n");
+        $display("=== Step 6: Iterative CORDIC (S=%0d, latency=%0d cycles) ===", S, S+2);
+        $display("  m | alpha (deg) | theta_out (deg) | theta_ref (deg) | error (deg)");
+        $display("----|-------------|-----------------|-----------------|------------");
+    `endif
+
+    // Load golden answers (MATLAB-exported hex, 2's complement)
+    mismatch_count = 0;
 `ifdef USE_MAG
-    sim_fd = $fopen({`Path, "step9_sim_results.dat"}, "w");
-    if (sim_fd == 0) begin
-        $display("[ERROR] Cannot open step9_sim_results.dat for writing.");
-        $finish;
-    end
-    $fwrite(sim_fd, "# m  outMag_int  outTheta_int  inX_int  inY_int\n");
-    $display("=== Step 9: Magnitude CORDIC (S=%0d, A_N=2^-1+2^-3-2^-6-2^-9) ===", S);
-    $display("  m | alpha (deg) | mag_out  | mag_ref  | err(%%)  | theta_out (deg) | theta_ref (deg)");
-    $display("----|-------------|----------|----------|---------|-----------------|----------------");
+    golden_fd = $fopen({`Path, "golden_step9_theta.dat"}, "r");
+    if (golden_fd != 0) begin
+        for (i = 0; i < num_tests; i = i+1) scan_ret = $fscanf(golden_fd, "%h", golden_theta[i]);
+        $fclose(golden_fd);
+    end else $display("[WARN] golden_step9_theta.dat not found, comparison skipped.");
+    golden_fd = $fopen({`Path, "golden_step9_mag.dat"}, "r");
+    if (golden_fd != 0) begin
+        for (i = 0; i < num_tests; i = i+1) scan_ret = $fscanf(golden_fd, "%h", golden_mag[i]);
+        $fclose(golden_fd);
+    end else $display("[WARN] golden_step9_mag.dat not found, comparison skipped.");
 `elsif USE_UNFOLDED
-    sim_fd = $fopen({`Path, "step7_sim_results.dat"}, "w");
-    if (sim_fd == 0) begin
-        $display("[ERROR] Cannot open step7_sim_results.dat for writing.");
-        $finish;
-    end
-    $fwrite(sim_fd, "# m  outTheta_int  inX_int  inY_int\n");
-    $display("=== Step 7: S/2-Unfolded CORDIC (S=%0d, latency=2 cycles) ===", S);
-    $display("  m | alpha (deg) | theta_out (deg) | theta_ref (deg) | error (deg)");
-    $display("----|-------------|-----------------|-----------------|------------");
+    golden_fd = $fopen({`Path, "golden_step7.dat"}, "r");
+    if (golden_fd != 0) begin
+        for (i = 0; i < num_tests; i = i+1) scan_ret = $fscanf(golden_fd, "%h", golden_theta[i]);
+        $fclose(golden_fd);
+    end else $display("[WARN] golden_step7.dat not found, comparison skipped.");
 `elsif USE_ITERATIVE
-    sim_fd = $fopen({`Path, "step6_sim_results.dat"}, "w");
-    if (sim_fd == 0) begin
-        $display("[ERROR] Cannot open step6_sim_results.dat for writing.");
-        $finish;
-    end
-    $fwrite(sim_fd, "# m  outTheta_int  inX_int  inY_int\n");
-    $display("=== Step 6: Iterative CORDIC (S=%0d, latency=%0d cycles) ===", S, S+1);
-    $display("  m | alpha (deg) | theta_out (deg) | theta_ref (deg) | error (deg)");
-    $display("----|-------------|-----------------|-----------------|------------");
+    golden_fd = $fopen({`Path, "golden_step6.dat"}, "r");
+    if (golden_fd != 0) begin
+        for (i = 0; i < num_tests; i = i+1) scan_ret = $fscanf(golden_fd, "%h", golden_theta[i]);
+        $fclose(golden_fd);
+    end else $display("[WARN] golden_step6.dat not found, comparison skipped.");
 `endif
 
     for (i = 0; i < num_tests; i = i+1) begin
@@ -158,9 +193,14 @@ initial begin
         @(negedge clk);
         in_valid = 0;
 
-        // @(posedge out_valid);
-        @(posedge clk);
-        @(negedge clk);
+`ifdef USE_ITERATIVE
+        repeat(S+2) begin
+            @(posedge clk); @(negedge clk);
+        end
+`else
+        @(posedge clk); @(negedge clk);
+        @(posedge clk); @(negedge clk);
+`endif
 
         theta_out_real = $itor($signed(outTheta)) / SCALE_TH;
         theta_ref_real = $itor(theta_ref_data[m_val[i]]) / SCALE_TH;
@@ -168,33 +208,48 @@ initial begin
         if (err_rad >  PI) err_rad = err_rad - 2.0*PI;
         if (err_rad < -PI) err_rad = err_rad + 2.0*PI;
 
+        `ifdef USE_MAG
+                mag_out_real  = $itor($signed(outMag)) / SCALE_XY;
+                mag_ref_real  = $sqrt($itor(inX_data[m_val[i]]*inX_data[m_val[i]] +
+                                       inY_data[m_val[i]]*inY_data[m_val[i]])) / SCALE_XY;
+                err_mag_pct   = (mag_out_real - mag_ref_real) / mag_ref_real * 100.0;
+                $display("  %1d | %11.4f | %8.5f | %8.5f | %+7.4f | %15.4f | %15.4f",
+                    m_val[i],
+                    alpha_m[m_val[i]] * 180.0 / PI,
+                    mag_out_real, mag_ref_real, err_mag_pct,
+                    theta_out_real * 180.0 / PI,
+                    theta_ref_real * 180.0 / PI);
+                $fwrite(sim_fd, "%h %h\n", outMag, outTheta);
+        `else
+                $display("  %1d | %11.4f | %15.4f | %15.4f | %11.6f",
+                    m_val[i],
+                    alpha_m[m_val[i]]  * 180.0 / PI,
+                    theta_out_real     * 180.0 / PI,
+                    theta_ref_real     * 180.0 / PI,
+                    err_rad            * 180.0 / PI);
+                $fwrite(sim_fd, "%h\n", outTheta);
+        `endif
+
+        // Compare against golden
+        if (outTheta !== golden_theta[i]) begin
+            mismatch_count = mismatch_count + 1;
+            $display("  [MISMATCH] i=%0d m=%0d: outTheta=%0d (golden=%0d)",
+                i, m_val[i], $signed(outTheta), $signed(golden_theta[i]));
+        end
 `ifdef USE_MAG
-        mag_out_real  = $itor($signed(outMag)) / SCALE_XY;
-        mag_ref_real  = $sqrt($itor(inX_data[m_val[i]]*inX_data[m_val[i]] +
-                               inY_data[m_val[i]]*inY_data[m_val[i]])) / SCALE_XY;
-        err_mag_pct   = (mag_out_real - mag_ref_real) / mag_ref_real * 100.0;
-        $display("  %1d | %11.4f | %8.5f | %8.5f | %+7.4f | %15.4f | %15.4f",
-            m_val[i],
-            alpha_m[m_val[i]] * 180.0 / PI,
-            mag_out_real, mag_ref_real, err_mag_pct,
-            theta_out_real * 180.0 / PI,
-            theta_ref_real * 180.0 / PI);
-        $fwrite(sim_fd, "%0d %0d %0d %0d %0d\n",
-            m_val[i], $signed(outMag), $signed(outTheta),
-            inX_data[m_val[i]], inY_data[m_val[i]]);
-`else
-        $display("  %1d | %11.4f | %15.4f | %15.4f | %11.6f",
-            m_val[i],
-            alpha_m[m_val[i]]  * 180.0 / PI,
-            theta_out_real     * 180.0 / PI,
-            theta_ref_real     * 180.0 / PI,
-            err_rad            * 180.0 / PI);
-        $fwrite(sim_fd, "%0d %0d %0d %0d\n",
-            m_val[i], $signed(outTheta),
-            inX_data[m_val[i]], inY_data[m_val[i]]);
+        if (outMag !== golden_mag[i]) begin
+            mismatch_count = mismatch_count + 1;
+            $display("  [MISMATCH] i=%0d m=%0d: outMag=%0d (golden=%0d)",
+                i, m_val[i], $signed(outMag), $signed(golden_mag[i]));
+        end
 `endif
 
     end
+
+    if (mismatch_count == 0)
+        $display("\n=== PASS: all %0d outputs match golden ===", num_tests);
+    else
+        $display("\n=== FAIL: %0d mismatch(es) ===", mismatch_count);
 
     $fclose(sim_fd);
 `ifdef USE_MAG

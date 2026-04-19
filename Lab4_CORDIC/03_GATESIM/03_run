@@ -1,0 +1,2 @@
+cp ../02_SYN/Netlist/CORDIC.sdf .
+vcs -full64 -debug_access+all -R +v2k -f file.f +neg_tchk +sdfverbose -sdf max:CORDIC:CORDIC.sdf

@@ -23,6 +23,20 @@ module CORDIC #(
 );
 
 // -----------------------------------------------------------------------
+// Input DFF
+// -----------------------------------------------------------------------
+reg signed [W-1:0] X_indff, Y_indff;
+reg                 v_indff;
+
+always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+        X_indff <= 0; Y_indff <= 0; v_indff <= 1'b0;
+    end else begin
+        X_indff <= inX; Y_indff <= inY; v_indff <= in_valid;
+    end
+end
+
+// -----------------------------------------------------------------------
 // LUT: round(atan(2^-i) * 2^8) for i = 0..9  (unsigned, all positive)
 // -----------------------------------------------------------------------
 reg [7:0] lut_val;
@@ -83,16 +97,16 @@ always @(posedge clk or negedge rst_n) begin
         case (state)
             // ----------------------------------------------------------
             IDLE: begin
-                if (in_valid) begin
+                if (v_indff) begin
                     // Initial stage: map Q2/Q3 inputs to Q1/Q4
-                    if (inX[W-1]) begin
+                    if (X_indff[W-1]) begin
                         // X < 0: reflect (X,Y) -> (-X,-Y), offset theta by +/-pi
-                        X_r  <= -inX;
-                        Y_r  <= -inY;
-                        th_r <= inY[W-1] ? PI_NEG : PI_POS;
+                        X_r  <= -X_indff;
+                        Y_r  <= -Y_indff;
+                        th_r <= Y_indff[W-1] ? PI_NEG : PI_POS;
                     end else begin
-                        X_r  <= inX;
-                        Y_r  <= inY;
+                        X_r  <= X_indff;
+                        Y_r  <= Y_indff;
                         th_r <= {TW{1'b0}};
                     end
                     iter  <= 4'd0;
