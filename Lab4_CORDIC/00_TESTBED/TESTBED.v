@@ -14,9 +14,9 @@
 
 module TESTBED;
 
-parameter W          = 11;
-parameter TW         = 11;
-parameter S          = 10;
+parameter W          = 14;
+parameter TW         = 13;
+parameter S          = 12;
 parameter CLK_PERIOD = 10;   // 10 ns -> 100 MHz
 
 // DUT ports
@@ -58,8 +58,8 @@ always #(CLK_PERIOD/2) clk = ~clk;
 
 // -----------------------------------------------------------------------
 // Test vectors (hardcoded from MATLAB step3: w=9, S=10, aw=8)
-// inX_data, inY_data : 1S+1I+9F  (scale 2^9 = 512)
-// theta_ref_data     : 1S+2I+8F  (scale 2^8 = 256)
+// inX_data, inY_data : 1S+1I+12F  (scale 2^12 = 4096)
+// theta_ref_data     : 1S+2I+10F  (scale 2^10 = 1024)
 // -----------------------------------------------------------------------
 integer inX_data      [0:9];
 integer inY_data      [0:9];
@@ -87,21 +87,21 @@ integer mismatch_count;
 integer golden_fd, scan_ret;
 
 initial begin
-    SCALE_XY = 512.0;   // 2^9
-    SCALE_TH = 256.0;   // 2^8
+    SCALE_XY = 4096.0;  // 2^12
+    SCALE_TH = 1024.0;  // 2^10
     PI       = 3.14159265358979;
 
-    // --- Hardcoded test vectors (w=9, S=10, aw=8) ---
-    inX_data[0] =  486; inY_data[0] =  158; theta_ref_data[0] =   80;
-    inX_data[1] =  300; inY_data[1] =  414; theta_ref_data[1] =  242;
-    inX_data[2] =    0; inY_data[2] =  512; theta_ref_data[2] =  402;
-    inX_data[3] = -301; inY_data[3] =  414; theta_ref_data[3] =  562;
-    inX_data[4] = -487; inY_data[4] =  158; theta_ref_data[4] =  724;
-    inX_data[5] = -487; inY_data[5] = -159; theta_ref_data[5] = -724;
-    inX_data[6] = -301; inY_data[6] = -415; theta_ref_data[6] = -562;
-    inX_data[7] =   -1; inY_data[7] = -512; theta_ref_data[7] = -402;
-    inX_data[8] =  300; inY_data[8] = -415; theta_ref_data[8] = -242;
-    inX_data[9] =  486; inY_data[9] = -159; theta_ref_data[9] =  -80;
+    // --- Hardcoded test vectors (w=12, S=12, aw=10) ---
+    inX_data[0] =  3896; inY_data[0] =  1266; theta_ref_data[0] =   322;
+    inX_data[1] =  2408; inY_data[1] =  3314; theta_ref_data[1] =   965;
+    inX_data[2] =     0; inY_data[2] =  4096; theta_ref_data[2] =  1608;
+    inX_data[3] = -2408; inY_data[3] =  3314; theta_ref_data[3] =  2252;
+    inX_data[4] = -3896; inY_data[4] =  1266; theta_ref_data[4] =  2895;
+    inX_data[5] = -3896; inY_data[5] = -1266; theta_ref_data[5] = -2895;
+    inX_data[6] = -2408; inY_data[6] = -3314; theta_ref_data[6] = -2252;
+    inX_data[7] =     0; inY_data[7] = -4096; theta_ref_data[7] = -1608;
+    inX_data[8] =  2408; inY_data[8] = -3314; theta_ref_data[8] =  -965;
+    inX_data[9] =  3896; inY_data[9] = -1266; theta_ref_data[9] =  -322;
 
     // Pre-compute alpha for display
     for (i = 0; i < 10; i = i+1)

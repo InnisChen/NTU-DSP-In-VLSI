@@ -12,9 +12,9 @@ set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
 set(groot, 'defaultLegendInterpreter',        'latex');
 
 %% Parameters (must match Verilog)
-aw       = 8;
-TW       = 11;
-SCALE_TH = 2^aw;   % 256
+aw       = 10;
+TW       = 13;
+SCALE_TH = 2^aw;   % 1024
 
 %% Load simulation results from Verilog
 dat_path = fullfile(fileparts(mfilename('fullpath')), ...
@@ -68,7 +68,7 @@ yline(avg_err,   'g:',  'LineWidth', 1.5, 'DisplayName', sprintf('Avg = %.2e rad
 hold off;
 xlabel('Index $m$', 'FontSize', fs);
 ylabel('$|\phi_{error}|$ (rad)', 'FontSize', fs);
-title(sprintf('Step 6: Phase Error vs. $m$ (Iterative CORDIC, $S=%d$)', 10), 'FontSize', fs);
+title(sprintf('Step 6: Phase Error vs. $m$ (Iterative CORDIC, $S=%d$)', 12), 'FontSize', fs);
 legend('Phase error', 'Threshold $2^{-9}$ rad', 'Average error', 'Location', 'northeast', 'FontSize', fs-1);
 xticks(m_idx); grid on; box on;
 exportgraphics(gcf, fullfile(fig_dir,'step6_phase_error.png'), 'Resolution',150);

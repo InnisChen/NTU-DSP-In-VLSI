@@ -15,13 +15,13 @@ set(groot, 'defaultAxesTickLabelInterpreter', 'latex');
 set(groot, 'defaultLegendInterpreter',        'latex');
 
 %% Parameters (must match Verilog)
-w        = 9;
-aw       = 8;
-S        = 10;
-SCALE_XY = 2^w;    % 512
-SCALE_TH = 2^aw;   % 256
-W        = w + 2;          % X/Y word-length: 1S + 1I + wF = 11 bits
-TW       = 1 + 2 + aw;    % theta word-length: 1S + 2I + awF = 11 bits
+w        = 12;
+aw       = 10;
+S        = 12;
+SCALE_XY = 2^w;    % 4096
+SCALE_TH = 2^aw;   % 1024
+W        = w + 2;          % X/Y word-length: 1S + 1I + wF = 14 bits
+TW       = 1 + 2 + aw;    % theta word-length: 1S + 2I + awF = 13 bits
 
 %% Load simulation results from Verilog
 dat_path = fullfile(fileparts(mfilename('fullpath')), ...
@@ -44,8 +44,8 @@ fprintf('Loaded %d test cases from %s\n\n', N, dat_path);
 
 % Test inputs (must match TESTBED.v, m = 0..9)
 m_idx   = (0:9)';
-inX_int = [ 486;  300;    0; -301; -487; -487; -301;   -1;  300;  486];
-inY_int = [ 158;  414;  512;  414;  158; -159; -415; -512; -415; -159];
+inX_int = [ 3896;  2408;     0; -2408; -3896; -3896; -2408;     0;  2408;  3896];
+inY_int = [ 1266;  3314;  4096;  3314;  1266; -1266; -3314; -4096; -3314; -1266];
 
 mag_out   = outMag_int   / SCALE_XY;
 theta_out = outTheta_int / SCALE_TH;
@@ -101,7 +101,7 @@ yline(0.1, 'r--', 'LineWidth', 1.5, 'DisplayName', 'CSD threshold $0.1\%$');
 hold off;
 xlabel('Index $m$', 'FontSize', fs);
 ylabel('Magnitude relative error vs true $(\%)$', 'FontSize', fs);
-title(sprintf('Step 9: Magnitude Error vs. $m$ ($S=%d$, $w=%d$, CSD $f_w=9$)', 10, w), 'FontSize', fs);
+title(sprintf('Step 9: Magnitude Error vs. $m$ ($S=%d$, $w=%d$, CSD $f_w=9$)', 12, w), 'FontSize', fs);
 legend('Magnitude error', 'CSD approx threshold $0.1\%$', 'Location', 'northeast', 'FontSize', fs-1);
 xticks(m_idx); grid on; box on;
 exportgraphics(gcf, fullfile(fig_dir,'step9_mag_error.png'), 'Resolution',150);

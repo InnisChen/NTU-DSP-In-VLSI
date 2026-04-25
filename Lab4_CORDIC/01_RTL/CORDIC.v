@@ -1,17 +1,17 @@
 `timescale 1ns/1ps
 
 // Step 6: Iterative CORDIC - arctangent only
-// Parameters: w=9, S=10, aw=8
-//   X/Y  : 1S + 1I + 9F = 11 bits  (scale 2^9 = 512)
-//   theta: 1S + 2I + 8F = 11 bits  (scale 2^8 = 256)
+// Parameters: w=12, S=12, aw=10
+//   X/Y  : 1S + 1I + 12F = 14 bits  (scale 2^12 = 4096)
+//   theta: 1S + 2I + 10F = 13 bits  (scale 2^10 = 1024)
 //
 // FSM: IDLE -> ITERATE (S cycles) -> DONE
-// Latency: S+1 cycles after in_valid
+// Latency: S+3 cycles after in_valid
 
 module CORDIC #(
-    parameter W  = 11,   // X/Y word-length  : 1S+1I+9F
-    parameter TW = 11,   // theta word-length : 1S+2I+8F
-    parameter S  = 10    // micro-rotations
+    parameter W  = 14,   // X/Y word-length  : 1S+1I+12F
+    parameter TW = 13,   // theta word-length : 1S+2I+10F
+    parameter S  = 12    // micro-rotations
 )(
     input                       clk,
     input                       rst_n,
@@ -37,31 +37,33 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // -----------------------------------------------------------------------
-// LUT: round(atan(2^-i) * 2^8) for i = 0..9  (unsigned, all positive)
+// LUT: round(atan(2^-i) * 2^10) for i = 0..11  (unsigned, all positive)
 // -----------------------------------------------------------------------
-reg [7:0] lut_val;
+reg [9:0] lut_val;
 always @(*) begin
     case (iter)
-        4'd0: lut_val = 8'd201;   // atan(2^0)  * 256 = 201
-        4'd1: lut_val = 8'd119;   // atan(2^-1) * 256 = 119
-        4'd2: lut_val = 8'd63;    // atan(2^-2) * 256 = 63
-        4'd3: lut_val = 8'd32;    // atan(2^-3) * 256 = 32
-        4'd4: lut_val = 8'd16;    // atan(2^-4) * 256 = 16
-        4'd5: lut_val = 8'd8;     // atan(2^-5) * 256 = 8
-        4'd6: lut_val = 8'd4;     // atan(2^-6) * 256 = 4
-        4'd7: lut_val = 8'd2;     // atan(2^-7) * 256 = 2
-        4'd8: lut_val = 8'd1;     // atan(2^-8) * 256 = 1
-        4'd9: lut_val = 8'd0;     // atan(2^-9) * 256 = 0 (rounds to 0)
-        default: lut_val = 8'd0;
+        4'd0:  lut_val = 10'd804;   // atan(2^0)   * 1024 = 804
+        4'd1:  lut_val = 10'd475;   // atan(2^-1)  * 1024 = 475
+        4'd2:  lut_val = 10'd251;   // atan(2^-2)  * 1024 = 251
+        4'd3:  lut_val = 10'd127;   // atan(2^-3)  * 1024 = 127
+        4'd4:  lut_val = 10'd64;    // atan(2^-4)  * 1024 = 64
+        4'd5:  lut_val = 10'd32;    // atan(2^-5)  * 1024 = 32
+        4'd6:  lut_val = 10'd16;    // atan(2^-6)  * 1024 = 16
+        4'd7:  lut_val = 10'd8;     // atan(2^-7)  * 1024 = 8
+        4'd8:  lut_val = 10'd4;     // atan(2^-8)  * 1024 = 4
+        4'd9:  lut_val = 10'd2;     // atan(2^-9)  * 1024 = 2
+        4'd10: lut_val = 10'd1;     // atan(2^-10) * 1024 = 1
+        4'd11: lut_val = 10'd0;     // atan(2^-11) * 1024 = 0
+        default: lut_val = 10'd0;
     endcase
 end
 
 // Zero-extend unsigned LUT value to theta word-length for accumulation
-wire signed [TW-1:0] lut_ext = {{(TW-8){1'b0}}, lut_val};
+wire signed [TW-1:0] lut_ext = {{(TW-10){1'b0}}, lut_val};
 
-// pi in 1S+2I+8F: round(pi * 2^8) = 804
-localparam signed [TW-1:0] PI_POS =  11'sd804;
-localparam signed [TW-1:0] PI_NEG = -11'sd804;
+// pi in 1S+2I+10F: round(pi * 2^10) = 3217
+localparam signed [TW-1:0] PI_POS =  13'sd3217;
+localparam signed [TW-1:0] PI_NEG = -13'sd3217;
 
 // -----------------------------------------------------------------------
 // FSM

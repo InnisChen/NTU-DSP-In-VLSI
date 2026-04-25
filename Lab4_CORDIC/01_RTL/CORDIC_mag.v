@@ -1,19 +1,19 @@
 `timescale 1ns/1ps
 
 // Step 9: S/2-Unfolded CORDIC - arctangent + magnitude
-// Parameters: W=11 (1S+1I+9F), TW=11 (1S+2I+8F), S=10
-// Pipeline: Initial -> Stage 0..4 (comb) -> [FF] -> Stage 5..9 (comb) -> [FF]
+// Parameters: W=14 (1S+1I+12F), TW=13 (1S+2I+10F), S=12
+// Pipeline: Initial -> Stage 0..5 (comb) -> [FF] -> Stage 6..11 (comb) -> [FF]
 // Latency: 2 clock cycles
 //
-// Magnitude output: outMag = Xs9 * A_N (CSD scaling, fw=9)
-//   A_N = 1/K_N = 2^(-1) + 2^(-3) - 2^(-6) - 2^(-9) = 0.607422
-//   True A_10   = 0.607253,  rel_err = 0.028% < 0.1%
+// Magnitude output: outMag = Xs11 * A_N (CSD scaling)
+//   A_N = 2^(-1) + 2^(-3) - 2^(-6) - 2^(-9) = 0.607422
+//   True A_12 = 0.607253,  rel_err = 0.028% < 0.1%
 // Assumes input magnitude <= 1.0 (no overflow).
 
 module CORDIC_mag #(
-    parameter W  = 11,
-    parameter TW = 11,
-    parameter S  = 10
+    parameter W  = 14,
+    parameter TW = 13,
+    parameter S  = 12
 )(
     input                        clk,
     input                        rst_n,
@@ -25,25 +25,25 @@ module CORDIC_mag #(
     output reg                   out_valid
 );
 
-localparam signed [TW-1:0] PI_POS =  11'sd804;
-localparam signed [TW-1:0] PI_NEG = -11'sd804;
+localparam signed [TW-1:0] PI_POS =  13'sd3217;
+localparam signed [TW-1:0] PI_NEG = -13'sd3217;
 
-localparam signed [TW-1:0] A0 = 11'd201;
-localparam signed [TW-1:0] A1 = 11'd119;
-localparam signed [TW-1:0] A2 = 11'd63;
-localparam signed [TW-1:0] A3 = 11'd32;
-localparam signed [TW-1:0] A4 = 11'd16;
-localparam signed [TW-1:0] A5 = 11'd8;
-localparam signed [TW-1:0] A6 = 11'd4;
-localparam signed [TW-1:0] A7 = 11'd2;
-localparam signed [TW-1:0] A8 = 11'd1;
-localparam signed [TW-1:0] A9 = 11'd0;
+localparam signed [TW-1:0] A0  = 13'd804;
+localparam signed [TW-1:0] A1  = 13'd475;
+localparam signed [TW-1:0] A2  = 13'd251;
+localparam signed [TW-1:0] A3  = 13'd127;
+localparam signed [TW-1:0] A4  = 13'd64;
+localparam signed [TW-1:0] A5  = 13'd32;
+localparam signed [TW-1:0] A6  = 13'd16;
+localparam signed [TW-1:0] A7  = 13'd8;
+localparam signed [TW-1:0] A8  = 13'd4;
+localparam signed [TW-1:0] A9  = 13'd2;
+localparam signed [TW-1:0] A10 = 13'd1;
+localparam signed [TW-1:0] A11 = 13'd0;
 
 // -----------------------------------------------------------------------
 // input DFF
-// Pipeline register between initial stage and first half (stages 0..4)
 // -----------------------------------------------------------------------
-
 reg signed [W-1:0]  X_indff, Y_indff;
 reg                  v_indff;
 
@@ -67,29 +67,39 @@ wire signed [W-1:0]  Y_init = X_indff[W-1] ? -Y_indff : Y_indff;
 wire signed [TW-1:0] T_init = X_indff[W-1] ? (Y_indff[W-1] ? PI_NEG : PI_POS) : {TW{1'b0}};
 
 // -----------------------------------------------------------------------
-// First half: stages 0..4 (combinational)
+// First half: stages 0..5 (combinational)
 // Y>=0: X+=Y_sh, Y-=X_sh, T+=A_i
 // Y<0 : X-=Y_sh, Y+=X_sh, T-=A_i
 // -----------------------------------------------------------------------
+// Stage 0 (shift=0)
 wire signed [W-1:0]  Xs0 = Y_init[W-1] ? X_init - Y_init       : X_init + Y_init;
 wire signed [W-1:0]  Ys0 = Y_init[W-1] ? Y_init + X_init       : Y_init - X_init;
 wire signed [TW-1:0] Ts0 = Y_init[W-1] ? T_init - A0           : T_init + A0;
 
+// Stage 1 (shift=1)
 wire signed [W-1:0]  Xs1 = Ys0[W-1] ? Xs0 - (Ys0 >>> 1) : Xs0 + (Ys0 >>> 1);
 wire signed [W-1:0]  Ys1 = Ys0[W-1] ? Ys0 + (Xs0 >>> 1) : Ys0 - (Xs0 >>> 1);
 wire signed [TW-1:0] Ts1 = Ys0[W-1] ? Ts0 - A1          : Ts0 + A1;
 
+// Stage 2 (shift=2)
 wire signed [W-1:0]  Xs2 = Ys1[W-1] ? Xs1 - (Ys1 >>> 2) : Xs1 + (Ys1 >>> 2);
 wire signed [W-1:0]  Ys2 = Ys1[W-1] ? Ys1 + (Xs1 >>> 2) : Ys1 - (Xs1 >>> 2);
 wire signed [TW-1:0] Ts2 = Ys1[W-1] ? Ts1 - A2          : Ts1 + A2;
 
+// Stage 3 (shift=3)
 wire signed [W-1:0]  Xs3 = Ys2[W-1] ? Xs2 - (Ys2 >>> 3) : Xs2 + (Ys2 >>> 3);
 wire signed [W-1:0]  Ys3 = Ys2[W-1] ? Ys2 + (Xs2 >>> 3) : Ys2 - (Xs2 >>> 3);
 wire signed [TW-1:0] Ts3 = Ys2[W-1] ? Ts2 - A3          : Ts2 + A3;
 
+// Stage 4 (shift=4)
 wire signed [W-1:0]  Xs4 = Ys3[W-1] ? Xs3 - (Ys3 >>> 4) : Xs3 + (Ys3 >>> 4);
 wire signed [W-1:0]  Ys4 = Ys3[W-1] ? Ys3 + (Xs3 >>> 4) : Ys3 - (Xs3 >>> 4);
 wire signed [TW-1:0] Ts4 = Ys3[W-1] ? Ts3 - A4          : Ts3 + A4;
+
+// Stage 5 (shift=5)
+wire signed [W-1:0]  Xs5 = Ys4[W-1] ? Xs4 - (Ys4 >>> 5) : Xs4 + (Ys4 >>> 5);
+wire signed [W-1:0]  Ys5 = Ys4[W-1] ? Ys4 + (Xs4 >>> 5) : Ys4 - (Xs4 >>> 5);
+wire signed [TW-1:0] Ts5 = Ys4[W-1] ? Ts4 - A5          : Ts4 + A5;
 
 // -----------------------------------------------------------------------
 // Pipeline register
@@ -102,40 +112,49 @@ always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
         X_pipe <= 0; Y_pipe <= 0; T_pipe <= 0; v_pipe <= 1'b0;
     end else begin
-        X_pipe <= Xs4; Y_pipe <= Ys4; T_pipe <= Ts4; v_pipe <= v_indff;
+        X_pipe <= Xs5; Y_pipe <= Ys5; T_pipe <= Ts5; v_pipe <= v_indff;
     end
 end
 
 // -----------------------------------------------------------------------
-// Second half: stages 5..9 (combinational)
+// Second half: stages 6..11 (combinational)
 // -----------------------------------------------------------------------
-wire signed [W-1:0]  Xs5 = Y_pipe[W-1] ? X_pipe - (Y_pipe >>> 5) : X_pipe + (Y_pipe >>> 5);
-wire signed [W-1:0]  Ys5 = Y_pipe[W-1] ? Y_pipe + (X_pipe >>> 5) : Y_pipe - (X_pipe >>> 5);
-wire signed [TW-1:0] Ts5 = Y_pipe[W-1] ? T_pipe - A5             : T_pipe + A5;
+// Stage 6 (shift=6)
+wire signed [W-1:0]  Xs6  = Y_pipe[W-1] ? X_pipe - (Y_pipe >>> 6)  : X_pipe + (Y_pipe >>> 6);
+wire signed [W-1:0]  Ys6  = Y_pipe[W-1] ? Y_pipe + (X_pipe >>> 6)  : Y_pipe - (X_pipe >>> 6);
+wire signed [TW-1:0] Ts6  = Y_pipe[W-1] ? T_pipe - A6              : T_pipe + A6;
 
-wire signed [W-1:0]  Xs6 = Ys5[W-1] ? Xs5 - (Ys5 >>> 6) : Xs5 + (Ys5 >>> 6);
-wire signed [W-1:0]  Ys6 = Ys5[W-1] ? Ys5 + (Xs5 >>> 6) : Ys5 - (Xs5 >>> 6);
-wire signed [TW-1:0] Ts6 = Ys5[W-1] ? Ts5 - A6          : Ts5 + A6;
+// Stage 7 (shift=7)
+wire signed [W-1:0]  Xs7  = Ys6[W-1] ? Xs6 - (Ys6 >>> 7) : Xs6 + (Ys6 >>> 7);
+wire signed [W-1:0]  Ys7  = Ys6[W-1] ? Ys6 + (Xs6 >>> 7) : Ys6 - (Xs6 >>> 7);
+wire signed [TW-1:0] Ts7  = Ys6[W-1] ? Ts6 - A7          : Ts6 + A7;
 
-wire signed [W-1:0]  Xs7 = Ys6[W-1] ? Xs6 - (Ys6 >>> 7) : Xs6 + (Ys6 >>> 7);
-wire signed [W-1:0]  Ys7 = Ys6[W-1] ? Ys6 + (Xs6 >>> 7) : Ys6 - (Xs6 >>> 7);
-wire signed [TW-1:0] Ts7 = Ys6[W-1] ? Ts6 - A7          : Ts6 + A7;
+// Stage 8 (shift=8)
+wire signed [W-1:0]  Xs8  = Ys7[W-1] ? Xs7 - (Ys7 >>> 8) : Xs7 + (Ys7 >>> 8);
+wire signed [W-1:0]  Ys8  = Ys7[W-1] ? Ys7 + (Xs7 >>> 8) : Ys7 - (Xs7 >>> 8);
+wire signed [TW-1:0] Ts8  = Ys7[W-1] ? Ts7 - A8          : Ts7 + A8;
 
-wire signed [W-1:0]  Xs8 = Ys7[W-1] ? Xs7 - (Ys7 >>> 8) : Xs7 + (Ys7 >>> 8);
-wire signed [W-1:0]  Ys8 = Ys7[W-1] ? Ys7 + (Xs7 >>> 8) : Ys7 - (Xs7 >>> 8);
-wire signed [TW-1:0] Ts8 = Ys7[W-1] ? Ts7 - A8          : Ts7 + A8;
+// Stage 9 (shift=9)
+wire signed [W-1:0]  Xs9  = Ys8[W-1] ? Xs8 - (Ys8 >>> 9) : Xs8 + (Ys8 >>> 9);
+wire signed [W-1:0]  Ys9  = Ys8[W-1] ? Ys8 + (Xs8 >>> 9) : Ys8 - (Xs8 >>> 9);
+wire signed [TW-1:0] Ts9  = Ys8[W-1] ? Ts8 - A9          : Ts8 + A9;
 
-wire signed [W-1:0]  Xs9 = Ys8[W-1] ? Xs8 - (Ys8 >>> 9) : Xs8 + (Ys8 >>> 9);
-wire signed [W-1:0]  Ys9 = Ys8[W-1] ? Ys8 + (Xs8 >>> 9) : Ys8 - (Xs8 >>> 9);
-wire signed [TW-1:0] Ts9 = Ys8[W-1] ? Ts8 - A9          : Ts8 + A9;
+// Stage 10 (shift=10)
+wire signed [W-1:0]  Xs10 = Ys9[W-1]  ? Xs9  - (Ys9  >>> 10) : Xs9  + (Ys9  >>> 10);
+wire signed [W-1:0]  Ys10 = Ys9[W-1]  ? Ys9  + (Xs9  >>> 10) : Ys9  - (Xs9  >>> 10);
+wire signed [TW-1:0] Ts10 = Ys9[W-1]  ? Ts9  - A10           : Ts9  + A10;
+
+// Stage 11 (shift=11): A11=0, so theta does not change
+wire signed [W-1:0]  Xs11 = Ys10[W-1] ? Xs10 - (Ys10 >>> 11) : Xs10 + (Ys10 >>> 11);
+wire signed [TW-1:0] Ts11 = Ts10;
 
 // -----------------------------------------------------------------------
-// CSD scaling: outMag = Xs9 * A_N
-//   A_N = 2^(-1) + 2^(-3) - 2^(-6) - 2^(-9)  (fw=9, rel_err=0.028%)
+// CSD scaling: outMag = Xs11 * A_N
+//   A_N = 2^(-1) + 2^(-3) - 2^(-6) - 2^(-9)  (rel_err=0.028% < 0.1%)
 // -----------------------------------------------------------------------
-wire signed [W+2:0] Xs9_ext = {{3{Xs9[W-1]}}, Xs9};
-wire signed [W+2:0] mag_comb = (Xs9_ext >>> 1) + (Xs9_ext >>> 3)
-                              - (Xs9_ext >>> 6) - (Xs9_ext >>> 9);
+wire signed [W+2:0] Xs11_ext = {{3{Xs11[W-1]}}, Xs11};
+wire signed [W+2:0] mag_comb = (Xs11_ext >>> 1) + (Xs11_ext >>> 3)
+                              - (Xs11_ext >>> 6) - (Xs11_ext >>> 9);
 
 // -----------------------------------------------------------------------
 // Output register
@@ -146,7 +165,7 @@ always @(posedge clk or negedge rst_n) begin
         outMag    <= 0;
         out_valid <= 1'b0;
     end else begin
-        outTheta  <= Ts9;
+        outTheta  <= Ts11;
         outMag    <= mag_comb[W-1:0];
         out_valid <= v_pipe;
     end
