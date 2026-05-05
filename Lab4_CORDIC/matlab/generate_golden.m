@@ -20,8 +20,8 @@ W        = w + 2;       % 14 bits  (1S+1I+12F)
 TW       = 1 + 2 + aw;  % 13 bits  (1S+2I+10F)
 
 %% Test inputs (must match TESTBED.v, m = 0..9)
-inX_int = [ 3896;  2408;     0; -2408; -3896; -3896; -2408;     0;  2408;  3896];
-inY_int = [ 1266;  3314;  4096;  3314;  1266; -1266; -3314; -4096; -3314; -1266];
+inX_int = [ 3895;  2407;     0; -2408; -3896; -3896; -2408;    -1;  2407;  3895];
+inY_int = [ 1265;  3313;  4096;  3313;  1265; -1266; -3314; -4096; -3314; -1266];
 
 %% Output directory
 out_dir = fullfile(fileparts(mfilename('fullpath')), '..', '00_TESTBED', 'src');

@@ -119,33 +119,6 @@ save(fullfile(fileparts(mfilename('fullpath')), 'step5_result.mat'), ...
      'csd_digits_nz', 'csd_shifts_nz');
 fprintf('Saved fw_min=%d, n_adders=%d to step5_result.mat\n', fw_min, n_adders);
 
-%% Generate golden_step9_mag.dat (magnitude golden, determinable only after CSD is fixed)
-mat2 = fullfile(fileparts(mfilename('fullpath')), 'step2_result.mat');
-mat3 = fullfile(fileparts(mfilename('fullpath')), 'step3_result.mat');
-load(mat2, 'w_min');
-load(mat3, 'S_min_even', 'inX_int', 'inY_int');
-w_xy = w_min;            % fractional bits for X/Y path
-W_xy = w_xy + 2;         % total X/Y word-length: 1S + 1I + wF
-
-golden_dir = fullfile(fileparts(mfilename('fullpath')), '..', '00_TESTBED', 'src');
-if ~exist(golden_dir, 'dir'), mkdir(golden_dir); end
-
-fid = fopen(fullfile(golden_dir, 'golden_step9_mag.dat'), 'w');
-for m = 0:9
-    % aw=Inf: X path is independent of angle quantization
-    [~, Xi_frac] = cordic_fixedpoint(inX_int(m+1) / 2^w_xy, ...
-                                      inY_int(m+1) / 2^w_xy, ...
-                                      S_min_even, w_xy, Inf);
-    Xi_int_k = Xi_frac * 2^w_xy;   % convert back to integer domain
-    mg_int = 0;
-    for t = 1:length(csd_digits_nz)
-        mg_int = mg_int + csd_digits_nz(t) * floor(Xi_int_k / 2^csd_shifts_nz(t));
-    end
-    fprintf(fid, '%03X\n', mod(mg_int, 2^W_xy));
-end
-fclose(fid);
-fprintf('Written golden_step9_mag.dat  (10 entries)\n');
-
 %% Figure: CSD error vs fw
 fs = 13;
 figure('Name', 'Step5 - CSD Error vs fw', 'Position', [100, 100, 900, 500]);

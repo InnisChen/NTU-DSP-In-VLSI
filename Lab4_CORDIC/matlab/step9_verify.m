@@ -44,8 +44,8 @@ fprintf('Loaded %d test cases from %s\n\n', N, dat_path);
 
 % Test inputs (must match TESTBED.v, m = 0..9)
 m_idx   = (0:9)';
-inX_int = [ 3896;  2408;     0; -2408; -3896; -3896; -2408;     0;  2408;  3896];
-inY_int = [ 1266;  3314;  4096;  3314;  1266; -1266; -3314; -4096; -3314; -1266];
+inX_int = [ 3895;  2407;     0; -2408; -3896; -3896; -2408;    -1;  2407;  3895];
+inY_int = [ 1265;  3313;  4096;  3313;  1265; -1266; -3314; -4096; -3314; -1266];
 
 mag_out   = outMag_int   / SCALE_XY;
 theta_out = outTheta_int / SCALE_TH;
@@ -92,21 +92,39 @@ fprintf('\nMagnitude max err = %.4f%%  (threshold 0.1%%)  -> %s\n', ...
 fprintf('Phase avg |error| = %.4e rad  (threshold 2^-9=%.4e rad)  -> %s\n\n', ...
     mean(abs(err_theta)), 2^-9, ternary(theta_pass,'PASS','FAIL'));
 
+threshold_mag   = 0.1;
+threshold_phase = 2^-9;
+avg_err_theta   = mean(abs(err_theta));
+
 %% Figure: Magnitude error vs true magnitude
 fs = 13;
 figure('Name','Step9 - Magnitude Error vs m', 'Position',[100,100,900,450]);
 bar(m_idx, abs(err_true_pct), 'FaceColor',[0.2 0.6 0.9]);
 hold on;
-yline(0.1, 'r--', 'LineWidth', 1.5, 'DisplayName', 'CSD threshold $0.1\%$');
+yline(threshold_mag, 'r--', 'LineWidth', 1.5, 'DisplayName', 'CSD threshold $0.1\%$');
 hold off;
 xlabel('Index $m$', 'FontSize', fs);
 ylabel('Magnitude relative error vs true $(\%)$', 'FontSize', fs);
-title(sprintf('Step 9: Magnitude Error vs. $m$ ($S=%d$, $w=%d$, CSD $f_w=9$)', 12, w), 'FontSize', fs);
+title(sprintf('Step 9: Magnitude Error vs. $m$ ($S=%d$, $w=%d$, CSD $f_w=9$)', S, w), 'FontSize', fs);
 legend('Magnitude error', 'CSD approx threshold $0.1\%$', 'Location', 'northeast', 'FontSize', fs-1);
 xticks(m_idx); grid on; box on;
 exportgraphics(gcf, fullfile(fig_dir,'step9_mag_error.png'), 'Resolution',150);
 
-fprintf('\nFigure saved to %s\n', fig_dir);
+%% Figure: Phase error vs m
+figure('Name','Step9 - Phase Error vs m', 'Position',[100,100,900,450]);
+bar(m_idx, abs(err_theta), 'FaceColor',[0.2 0.6 0.9]);
+hold on;
+yline(threshold_phase, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Threshold $2^{-9}$');
+yline(avg_err_theta,   'g:',  'LineWidth', 1.5, 'DisplayName', sprintf('Avg = %.2e rad', avg_err_theta));
+hold off;
+xlabel('Index $m$', 'FontSize', fs);
+ylabel('$|\phi_{error}|$ (rad)', 'FontSize', fs);
+title(sprintf('Step 9: Phase Error vs. $m$ (Full CORDIC, $S=%d$, $a_w=%d$)', S, aw), 'FontSize', fs);
+legend('Phase error', 'Threshold $2^{-9}$ rad', 'Average error', 'Location', 'northeast', 'FontSize', fs-1);
+xticks(m_idx); grid on; box on;
+exportgraphics(gcf, fullfile(fig_dir,'step9_phase_error.png'), 'Resolution',150);
+
+fprintf('\nFigures saved to %s\n', fig_dir);
 
 %% Helper
 function s = ternary(cond, a, b)

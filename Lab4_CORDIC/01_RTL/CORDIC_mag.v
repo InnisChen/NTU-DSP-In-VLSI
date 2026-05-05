@@ -22,7 +22,9 @@ module CORDIC_mag #(
     input                        in_valid,
     output reg signed [TW-1:0]  outTheta,
     output reg signed [W-1:0]   outMag,
-    output reg                   out_valid
+    output reg                   out_valid,
+    output reg signed [W-1:0]   outX,
+    output reg signed [W-1:0]   outY
 );
 
 localparam signed [TW-1:0] PI_POS =  13'sd3217;
@@ -146,6 +148,7 @@ wire signed [TW-1:0] Ts10 = Ys9[W-1]  ? Ts9  - A10           : Ts9  + A10;
 
 // Stage 11 (shift=11): A11=0, so theta does not change
 wire signed [W-1:0]  Xs11 = Ys10[W-1] ? Xs10 - (Ys10 >>> 11) : Xs10 + (Ys10 >>> 11);
+wire signed [W-1:0]  Ys11 = Ys10[W-1] ? Ys10 + (Xs10 >>> 11) : Ys10 - (Xs10 >>> 11);
 wire signed [TW-1:0] Ts11 = Ts10;
 
 // -----------------------------------------------------------------------
@@ -164,10 +167,14 @@ always @(posedge clk or negedge rst_n) begin
         outTheta  <= 0;
         outMag    <= 0;
         out_valid <= 1'b0;
+        outX      <= 0;
+        outY      <= 0;
     end else begin
         outTheta  <= Ts11;
         outMag    <= mag_comb[W-1:0];
         out_valid <= v_pipe;
+        outX      <= Xs11;
+        outY      <= Ys11;
     end
 end
 

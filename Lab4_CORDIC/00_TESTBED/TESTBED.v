@@ -9,8 +9,8 @@
 //   USE_MAG       = Step 9 magnitude+theta (10 inputs, both outputs)
 // ============================================================
 //`define USE_ITERATIVE
-//`define USE_UNFOLDED
-`define USE_MAG
+`define USE_UNFOLDED
+//`define USE_MAG
 
 module TESTBED;
 
@@ -25,6 +25,8 @@ reg                   in_valid;
 reg  signed [W-1:0]  inX, inY;
 wire                  out_valid;
 wire signed [TW-1:0] outTheta;
+wire signed [W-1:0]  outX;
+wire signed [W-1:0]  outY;
 `ifdef USE_MAG
 wire signed [W-1:0]  outMag;
 `endif
@@ -36,25 +38,28 @@ wire signed [W-1:0]  outMag;
 CORDIC_mag      #(.W(W), .TW(TW), .S(S)) dut (
     .clk(clk),    .rst_n(rst_n),
     .inX(inX),    .inY(inY),    .in_valid(in_valid),
-    .outTheta(outTheta), .outMag(outMag), .out_valid(out_valid)
+    .outTheta(outTheta), .outMag(outMag), .out_valid(out_valid),
+    .outX(outX),  .outY(outY)
 );
 `elsif USE_UNFOLDED
 CORDIC_unfolded #(.W(W), .TW(TW), .S(S)) dut (
     .clk(clk),    .rst_n(rst_n),
     .inX(inX),    .inY(inY),    .in_valid(in_valid),
-    .outTheta(outTheta),         .out_valid(out_valid)
+    .outTheta(outTheta),         .out_valid(out_valid),
+    .outX(outX),  .outY(outY)
 );
 `elsif USE_ITERATIVE
 CORDIC          #(.W(W), .TW(TW), .S(S)) dut (
     .clk(clk),    .rst_n(rst_n),
     .inX(inX),    .inY(inY),    .in_valid(in_valid),
-    .outTheta(outTheta),         .out_valid(out_valid)
+    .outTheta(outTheta),         .out_valid(out_valid),
+    .outX(outX),  .outY(outY)
 );
 `endif
 
 // Clock
 initial clk = 0;
-always #(CLK_PERIOD/2) clk = ~clk;
+always #(CLK_PERIOD/2.0) clk = ~clk;
 
 // -----------------------------------------------------------------------
 // Test vectors (hardcoded from MATLAB step3: w=9, S=10, aw=8)
@@ -92,16 +97,16 @@ initial begin
     PI       = 3.14159265358979;
 
     // --- Hardcoded test vectors (w=12, S=12, aw=10) ---
-    inX_data[0] =  3896; inY_data[0] =  1266; theta_ref_data[0] =   322;
-    inX_data[1] =  2408; inY_data[1] =  3314; theta_ref_data[1] =   965;
+    inX_data[0] =  3895; inY_data[0] =  1265; theta_ref_data[0] =   322;
+    inX_data[1] =  2407; inY_data[1] =  3313; theta_ref_data[1] =   965;
     inX_data[2] =     0; inY_data[2] =  4096; theta_ref_data[2] =  1608;
-    inX_data[3] = -2408; inY_data[3] =  3314; theta_ref_data[3] =  2252;
-    inX_data[4] = -3896; inY_data[4] =  1266; theta_ref_data[4] =  2895;
+    inX_data[3] = -2408; inY_data[3] =  3313; theta_ref_data[3] =  2252;
+    inX_data[4] = -3896; inY_data[4] =  1265; theta_ref_data[4] =  2895;
     inX_data[5] = -3896; inY_data[5] = -1266; theta_ref_data[5] = -2895;
     inX_data[6] = -2408; inY_data[6] = -3314; theta_ref_data[6] = -2252;
-    inX_data[7] =     0; inY_data[7] = -4096; theta_ref_data[7] = -1608;
-    inX_data[8] =  2408; inY_data[8] = -3314; theta_ref_data[8] =  -965;
-    inX_data[9] =  3896; inY_data[9] = -1266; theta_ref_data[9] =  -322;
+    inX_data[7] =    -1; inY_data[7] = -4096; theta_ref_data[7] = -1608;
+    inX_data[8] =  2407; inY_data[8] = -3314; theta_ref_data[8] =  -965;
+    inX_data[9] =  3895; inY_data[9] = -1266; theta_ref_data[9] =  -322;
 
     // Pre-compute alpha for display
     for (i = 0; i < 10; i = i+1)

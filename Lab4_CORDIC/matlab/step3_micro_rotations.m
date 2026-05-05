@@ -132,81 +132,10 @@ else
     fprintf('=> FAIL: increase S or aw\n\n');
 end
 
-%% Generate Verilog test vectors (use final S_min_even, w, aw_min)
-% inX_int, inY_int : quantized inputs  (1S+1I+wF integer domain)
-% theta_ref_int    : fixed-point CORDIC output (1S+2I+awF integer domain)
-inX_int       = zeros(1, length(m_vec));
-inY_int       = zeros(1, length(m_vec));
-theta_ref_int = zeros(1, length(m_vec));
-
-max_int =  2^(w+1) - 1;
-min_int = -2^(w+1);
-
-for k = 1:length(m_vec)
-    Xi = floor(X_true(k) * 2^w);
-    Yi = floor(Y_true(k) * 2^w);
-    Xi = max(min_int, min(max_int, Xi));
-    Yi = max(min_int, min(max_int, Yi));
-    inX_int(k) = Xi;
-    inY_int(k) = Yi;
-
-    [theta_out, ~]    = cordic_fixedpoint(X_true(k), Y_true(k), S_min_even, w, aw_min);
-    theta_ref_int(k)  = round(theta_out * 2^aw_min);
-end
-
-% Write text file for Verilog $fscanf
-% Format: one line per test case -> inX_int  inY_int  theta_ref_int (signed decimal)
-tv_dir  = fullfile(fileparts(mfilename('fullpath')), '..', '00_TESTBED', 'src');
-if ~exist(tv_dir, 'dir'), mkdir(tv_dir); end
-tv_path = fullfile(tv_dir, 'test_vectors.dat');
-fid = fopen(tv_path, 'w');
-for k = 1:length(m_vec)
-    fprintf(fid, '%d %d %d\n', inX_int(k), inY_int(k), theta_ref_int(k));
-end
-fclose(fid);
-fprintf('Written test_vectors.dat (S=%d, w=%d, aw=%d)\n', S_min_even, w, aw_min);
-
 %% Save results
 save(fullfile(fileparts(mfilename('fullpath')), 'step3_result.mat'), ...
-     'S_min', 'S_min_even', 'aw_min', 'inX_int', 'inY_int', 'theta_ref_int', 'm_vec');
+     'S_min', 'S_min_even', 'aw_min', 'm_vec');
 fprintf('Saved S_min=%d, S_min_even=%d, aw_min=%d to step3_result.mat\n', S_min, S_min_even, aw_min);
-
-%% Generate golden answers for TESTBED comparison (Step 6, 7, theta part of Step 9)
-% All three share the same arctangent algorithm; S and aw are now determined.
-golden_dir = fullfile(fileparts(mfilename('fullpath')), '..', '00_TESTBED', 'src');
-if ~exist(golden_dir, 'dir'), mkdir(golden_dir); end
-
-S   = S_min_even;
-TW  = 1 + 2 + aw_min;   % theta word-length: 1S + 2I + awF
-
-% golden_step6.dat: 4 entries for USE_ITERATIVE (m = 0, 3, 6, 9)
-m_step6 = [0; 3; 6; 9];
-fid = fopen(fullfile(golden_dir, 'golden_step6.dat'), 'w');
-for k = 1:length(m_step6)
-    m = m_step6(k);
-    [th, ~] = cordic_fixedpoint(inX_int(m+1) / 2^w, inY_int(m+1) / 2^w, S, w, aw_min);
-    fprintf(fid, '%03X\n', mod(round(th * 2^aw_min), 2^TW));
-end
-fclose(fid);
-fprintf('Written golden_step6.dat  (4 entries, m=0,3,6,9)\n');
-
-% golden_step7.dat: 10 entries for USE_UNFOLDED (m = 0..9)
-fid = fopen(fullfile(golden_dir, 'golden_step7.dat'), 'w');
-for m = 0:9
-    [th, ~] = cordic_fixedpoint(inX_int(m+1) / 2^w, inY_int(m+1) / 2^w, S, w, aw_min);
-    fprintf(fid, '%03X\n', mod(round(th * 2^aw_min), 2^TW));
-end
-fclose(fid);
-fprintf('Written golden_step7.dat  (10 entries, m=0..9)\n');
-
-% golden_step9_theta.dat: 10 entries, identical algorithm to step7
-fid = fopen(fullfile(golden_dir, 'golden_step9_theta.dat'), 'w');
-for m = 0:9
-    [th, ~] = cordic_fixedpoint(inX_int(m+1) / 2^w, inY_int(m+1) / 2^w, S, w, aw_min);
-    fprintf(fid, '%03X\n', mod(round(th * 2^aw_min), 2^TW));
-end
-fclose(fid);
-fprintf('Written golden_step9_theta.dat  (10 entries, m=0..9)\n');
 
 %% Figure A: avg phase error vs N
 fs = 13;

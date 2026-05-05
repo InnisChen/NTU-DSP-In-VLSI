@@ -19,7 +19,9 @@ module CORDIC #(
     input  signed [W-1:0]      inY,
     input                       in_valid,
     output reg signed [TW-1:0] outTheta,
-    output reg                  out_valid
+    output reg                  out_valid,
+    output reg signed [W-1:0]  outX,
+    output reg signed [W-1:0]  outY
 );
 
 // -----------------------------------------------------------------------
@@ -36,9 +38,11 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
+
 // -----------------------------------------------------------------------
 // LUT: round(atan(2^-i) * 2^10) for i = 0..11  (unsigned, all positive)
 // -----------------------------------------------------------------------
+reg [3:0] iter;   // iteration index 0..S-1
 reg [9:0] lut_val;
 always @(*) begin
     case (iter)
@@ -73,7 +77,7 @@ localparam ITERATE = 2'd1;
 localparam DONE    = 2'd2;
 
 reg [1:0] state;
-reg [3:0] iter;   // iteration index 0..S-1
+
 
 // Datapath registers
 reg signed [W-1:0]  X_r, Y_r;
@@ -93,6 +97,8 @@ always @(posedge clk or negedge rst_n) begin
         th_r      <= 0;
         outTheta  <= 0;
         out_valid <= 1'b0;
+        outX      <= 0;
+        outY      <= 0;
     end else begin
         out_valid <= 1'b0;   // default: deassert each cycle
 
@@ -142,6 +148,8 @@ always @(posedge clk or negedge rst_n) begin
             DONE: begin
                 outTheta  <= th_r;
                 out_valid <= 1'b1;
+                outX      <= X_r;
+                outY      <= Y_r;
                 state     <= IDLE;
             end
 
