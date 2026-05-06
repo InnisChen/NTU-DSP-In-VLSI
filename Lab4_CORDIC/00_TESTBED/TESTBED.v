@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
-// `define Path  "../00_TESTBED/src/"              // server (sim runs from project root)
-`define Path  "../../../../../../00_TESTBED/src/"  // Vivado xsim
+`define Path  "../00_TESTBED/src/"              // server (sim runs from project root)
+//`define Path  "../../../../../../00_TESTBED/src/"  // Vivado xsim
 // ============================================================
 // MODE SELECT (uncomment exactly one):
 //   USE_ITERATIVE = Step 6 iterative      (4 inputs: m=0,3,6,9)

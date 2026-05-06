@@ -6,7 +6,7 @@
 //   theta: 1S + 2I + 10F = 13 bits  (scale 2^10 = 1024)
 //
 // FSM: IDLE -> ITERATE (S cycles) -> DONE
-// Latency: S+3 cycles after in_valid
+// Latency: S+2 cycles after in_valid
 
 module CORDIC #(
     parameter W  = 14,   // X/Y word-length  : 1S+1I+12F
