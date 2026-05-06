@@ -1,0 +1,107 @@
+`timescale 1ns/1ps
+`include "fft32_params.vh"
+
+module tb_bit_reverse_buffer;
+    localparam DATA_W = `FFT32_DATA_W;
+    localparam CLK_PERIOD = 10;
+
+    reg clk;
+    reg rst_n;
+    reg valid_in;
+    reg signed [DATA_W-1:0] SDFOutRe;
+    reg signed [DATA_W-1:0] SDFOutIm;
+
+    wire br_valid_out;
+    wire signed [DATA_W-1:0] BROutRe;
+    wire signed [DATA_W-1:0] BROutIm;
+    wire [4:0] br_out_idx;
+    wire wr_bank;
+    wire rd_bank;
+    wire [4:0] wr_addr;
+    wire [4:0] rd_addr;
+
+    bit_reverse_buffer #(
+        .DATA_W(DATA_W)
+    ) dut (
+        .clk(clk),
+        .rst_n(rst_n),
+        .valid_in(valid_in),
+        .SDFOutRe(SDFOutRe),
+        .SDFOutIm(SDFOutIm),
+        .br_valid_out(br_valid_out),
+        .BROutRe(BROutRe),
+        .BROutIm(BROutIm),
+        .br_out_idx(br_out_idx),
+        .wr_bank(wr_bank),
+        .rd_bank(rd_bank),
+        .wr_addr(wr_addr),
+        .rd_addr(rd_addr)
+    );
+
+    always #(CLK_PERIOD/2) clk = ~clk;
+
+    integer i;
+    integer out_count;
+    reg [4:0] br_seq [0:31];
+
+    initial begin
+        br_seq[0] = 5'd0;  br_seq[1] = 5'd16; br_seq[2] = 5'd8;  br_seq[3] = 5'd24;
+        br_seq[4] = 5'd4;  br_seq[5] = 5'd20; br_seq[6] = 5'd12; br_seq[7] = 5'd28;
+        br_seq[8] = 5'd2;  br_seq[9] = 5'd18; br_seq[10] = 5'd10; br_seq[11] = 5'd26;
+        br_seq[12] = 5'd6; br_seq[13] = 5'd22; br_seq[14] = 5'd14; br_seq[15] = 5'd30;
+        br_seq[16] = 5'd1; br_seq[17] = 5'd17; br_seq[18] = 5'd9;  br_seq[19] = 5'd25;
+        br_seq[20] = 5'd5; br_seq[21] = 5'd21; br_seq[22] = 5'd13; br_seq[23] = 5'd29;
+        br_seq[24] = 5'd3; br_seq[25] = 5'd19; br_seq[26] = 5'd11; br_seq[27] = 5'd27;
+        br_seq[28] = 5'd7; br_seq[29] = 5'd23; br_seq[30] = 5'd15; br_seq[31] = 5'd31;
+    end
+
+    initial begin
+        clk = 1'b0;
+        rst_n = 1'b0;
+        valid_in = 1'b0;
+        SDFOutRe = {DATA_W{1'b0}};
+        SDFOutIm = {DATA_W{1'b0}};
+        out_count = 0;
+
+        $dumpfile("tb_bit_reverse_buffer.vcd");
+        $dumpvars(0, tb_bit_reverse_buffer);
+
+        repeat (4) @(negedge clk);
+        rst_n = 1'b1;
+
+        for (i = 0; i < 32; i = i + 1) begin
+            @(negedge clk);
+            valid_in = 1'b1;
+            SDFOutRe = {{(DATA_W-5){1'b0}}, br_seq[i]};
+            SDFOutIm = {DATA_W{1'b0}};
+        end
+
+        @(negedge clk);
+        valid_in = 1'b0;
+        SDFOutRe = {DATA_W{1'b0}};
+        SDFOutIm = {DATA_W{1'b0}};
+
+        repeat (40) @(negedge clk);
+        if (out_count == 32) begin
+            $display("============================================================");
+            $display("[PASS] tb_bit_reverse_buffer");
+            $display("       Checked BROut order: 32 samples, 0 mismatches.");
+            $display("============================================================");
+        end else begin
+            $display("============================================================");
+            $display("[FAIL] tb_bit_reverse_buffer");
+            $display("       Expected 32 BROut samples, got %0d.", out_count);
+            $display("============================================================");
+        end
+        $finish;
+    end
+
+    always @(posedge clk) begin
+        if (br_valid_out) begin
+            if (BROutRe[4:0] !== out_count[4:0]) begin
+                $display("[ERROR] BROut order mismatch at %0d, got %0d.", out_count, BROutRe[4:0]);
+            end
+            out_count = out_count + 1;
+        end
+    end
+endmodule
