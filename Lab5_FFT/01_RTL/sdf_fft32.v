@@ -21,164 +21,145 @@ module sdf_fft32 #(
     output wire signed [DATA_W-1:0] SDFOutIm,
     output wire [4:0] sdf_out_idx_br
 );
-    reg signed [DATA_W-1:0] in_buf_re [0:31];
-    reg signed [DATA_W-1:0] in_buf_im [0:31];
-    reg signed [DATA_W-1:0] out_buf_re [0:31];
-    reg signed [DATA_W-1:0] out_buf_im [0:31];
+    wire stage1_valid;
+    wire stage2_valid;
+    wire stage3_valid;
+    wire stage4_valid;
+    wire stage5_valid;
 
-    reg signed [DATA_W-1:0] calc_re [0:31];
-    reg signed [DATA_W-1:0] calc_im [0:31];
+    wire signed [DATA_W-1:0] stage1_re;
+    wire signed [DATA_W-1:0] stage1_im;
+    wire signed [DATA_W-1:0] stage2_re;
+    wire signed [DATA_W-1:0] stage2_im;
+    wire signed [DATA_W-1:0] stage3_re;
+    wire signed [DATA_W-1:0] stage3_im;
+    wire signed [DATA_W-1:0] stage4_re;
+    wire signed [DATA_W-1:0] stage4_im;
+    wire signed [DATA_W-1:0] stage5_re;
+    wire signed [DATA_W-1:0] stage5_im;
 
-    reg [4:0] wr_count;
+    sdf_stage #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .WF_STAGE(WF_STAGE1),
+        .WF_TWIDDLE(WF_TWIDDLE),
+        .DEPTH(16),
+        .PERIOD(32),
+        .CTR_BIT(4),
+        .LOW_MASK(4'hf),
+        .PHASE_SHIFT(0)
+    ) u_stage1 (
+        .clk(clk),
+        .rst_n(rst_n),
+        .valid_in(valid_in),
+        .stage_in_re(FFTInRe),
+        .stage_in_im(FFTInIm),
+        .valid_out(stage1_valid),
+        .stage_out_re(stage1_re),
+        .stage_out_im(stage1_im)
+    );
+
+    sdf_stage #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .WF_STAGE(WF_STAGE2),
+        .WF_TWIDDLE(WF_TWIDDLE),
+        .DEPTH(8),
+        .PERIOD(16),
+        .CTR_BIT(3),
+        .LOW_MASK(4'h7),
+        .PHASE_SHIFT(1)
+    ) u_stage2 (
+        .clk(clk),
+        .rst_n(rst_n),
+        .valid_in(stage1_valid),
+        .stage_in_re(stage1_re),
+        .stage_in_im(stage1_im),
+        .valid_out(stage2_valid),
+        .stage_out_re(stage2_re),
+        .stage_out_im(stage2_im)
+    );
+
+    sdf_stage #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .WF_STAGE(WF_STAGE3),
+        .WF_TWIDDLE(WF_TWIDDLE),
+        .DEPTH(4),
+        .PERIOD(8),
+        .CTR_BIT(2),
+        .LOW_MASK(4'h3),
+        .PHASE_SHIFT(2)
+    ) u_stage3 (
+        .clk(clk),
+        .rst_n(rst_n),
+        .valid_in(stage2_valid),
+        .stage_in_re(stage2_re),
+        .stage_in_im(stage2_im),
+        .valid_out(stage3_valid),
+        .stage_out_re(stage3_re),
+        .stage_out_im(stage3_im)
+    );
+
+    sdf_stage #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .WF_STAGE(WF_STAGE4),
+        .WF_TWIDDLE(WF_TWIDDLE),
+        .DEPTH(2),
+        .PERIOD(4),
+        .CTR_BIT(1),
+        .LOW_MASK(4'h1),
+        .PHASE_SHIFT(3)
+    ) u_stage4 (
+        .clk(clk),
+        .rst_n(rst_n),
+        .valid_in(stage3_valid),
+        .stage_in_re(stage3_re),
+        .stage_in_im(stage3_im),
+        .valid_out(stage4_valid),
+        .stage_out_re(stage4_re),
+        .stage_out_im(stage4_im)
+    );
+
+    sdf_stage #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .WF_STAGE(WF_STAGE5),
+        .WF_TWIDDLE(WF_TWIDDLE),
+        .DEPTH(1),
+        .PERIOD(2),
+        .CTR_BIT(0),
+        .LOW_MASK(4'h0),
+        .PHASE_SHIFT(0)
+    ) u_stage5 (
+        .clk(clk),
+        .rst_n(rst_n),
+        .valid_in(stage4_valid),
+        .stage_in_re(stage4_re),
+        .stage_in_im(stage4_im),
+        .valid_out(stage5_valid),
+        .stage_out_re(stage5_re),
+        .stage_out_im(stage5_im)
+    );
+
     reg [4:0] out_count;
-    reg out_active;
-
-    reg sdf_valid_out_r;
-    reg signed [DATA_W-1:0] SDFOutRe_r;
-    reg signed [DATA_W-1:0] SDFOutIm_r;
     reg [4:0] sdf_out_idx_br_r;
 
-    assign sdf_valid_out = sdf_valid_out_r;
-    assign SDFOutRe = SDFOutRe_r;
-    assign SDFOutIm = SDFOutIm_r;
+    assign sdf_valid_out = stage5_valid;
+    assign SDFOutRe = stage5_re;
+    assign SDFOutIm = stage5_im;
     assign sdf_out_idx_br = sdf_out_idx_br_r;
 
-    integer ci;
-    integer cstage;
-    integer cspan;
-    integer chalf;
-    integer cstep;
-    integer cblock;
-    integer cn;
-    integer cupper;
-    integer clower;
-    integer cwf;
-
-    reg signed [DATA_W-1:0] a_re;
-    reg signed [DATA_W-1:0] a_im;
-    reg signed [DATA_W-1:0] b_re;
-    reg signed [DATA_W-1:0] b_im;
-    reg signed [DATA_W-1:0] sum_re;
-    reg signed [DATA_W-1:0] sum_im;
-    reg signed [DATA_W-1:0] diff_re;
-    reg signed [DATA_W-1:0] diff_im;
-    reg signed [DATA_W-1:0] tw_re;
-    reg signed [DATA_W-1:0] tw_im;
-    reg signed [DATA_W-1:0] prod_re;
-    reg signed [DATA_W-1:0] prod_im;
-
-    always @* begin
-        for (ci = 0; ci < 32; ci = ci + 1) begin
-            calc_re[ci] = in_buf_re[ci];
-            calc_im[ci] = in_buf_im[ci];
-        end
-
-        if (valid_in) begin
-            calc_re[wr_count] = FFTInRe;
-            calc_im[wr_count] = FFTInIm;
-        end
-
-        for (cstage = 0; cstage < 5; cstage = cstage + 1) begin
-            cspan = 32 >> cstage;
-            chalf = cspan >> 1;
-            cstep = 32 / cspan;
-            cwf = get_stage_wf(cstage);
-
-            for (cblock = 0; cblock < 32; cblock = cblock + cspan) begin
-                for (cn = 0; cn < chalf; cn = cn + 1) begin
-                    cupper = cblock + cn;
-                    clower = cupper + chalf;
-
-                    a_re = calc_re[cupper];
-                    a_im = calc_im[cupper];
-                    b_re = calc_re[clower];
-                    b_im = calc_im[clower];
-
-                    sum_re = trunc_to_wf(a_re + b_re, cwf);
-                    sum_im = trunc_to_wf(a_im + b_im, cwf);
-                    diff_re = trunc_to_wf(a_re - b_re, cwf);
-                    diff_im = trunc_to_wf(a_im - b_im, cwf);
-
-                    tw_re = trunc_to_wf(twiddle_re(cn * cstep), WF_TWIDDLE);
-                    tw_im = trunc_to_wf(twiddle_im(cn * cstep), WF_TWIDDLE);
-
-                    prod_re = trunc_to_wf(mult_q(diff_re, tw_re) - mult_q(diff_im, tw_im), cwf);
-                    prod_im = trunc_to_wf(mult_q(diff_re, tw_im) + mult_q(diff_im, tw_re), cwf);
-
-                    calc_re[cupper] = sum_re;
-                    calc_im[cupper] = sum_im;
-                    calc_re[clower] = prod_re;
-                    calc_im[clower] = prod_im;
-                end
-            end
-        end
-    end
-
-    integer si;
-    wire symbol_done = valid_in && (wr_count == 5'd31);
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            wr_count <= 5'd0;
             out_count <= 5'd0;
-            out_active <= 1'b0;
-            sdf_valid_out_r <= 1'b0;
-            SDFOutRe_r <= {DATA_W{1'b0}};
-            SDFOutIm_r <= {DATA_W{1'b0}};
             sdf_out_idx_br_r <= 5'd0;
-            for (si = 0; si < 32; si = si + 1) begin
-                in_buf_re[si] <= {DATA_W{1'b0}};
-                in_buf_im[si] <= {DATA_W{1'b0}};
-                out_buf_re[si] <= {DATA_W{1'b0}};
-                out_buf_im[si] <= {DATA_W{1'b0}};
-            end
-        end else begin
-            sdf_valid_out_r <= 1'b0;
-
-            if (valid_in) begin
-                in_buf_re[wr_count] <= FFTInRe;
-                in_buf_im[wr_count] <= FFTInIm;
-                if (symbol_done) begin
-                    wr_count <= 5'd0;
-                    for (si = 0; si < 32; si = si + 1) begin
-                        out_buf_re[si] <= calc_re[si];
-                        out_buf_im[si] <= calc_im[si];
-                    end
-                end else begin
-                    wr_count <= wr_count + 5'd1;
-                end
-            end
-
-            if (out_active) begin
-                sdf_valid_out_r <= 1'b1;
-                SDFOutRe_r <= out_buf_re[out_count];
-                SDFOutIm_r <= out_buf_im[out_count];
-                sdf_out_idx_br_r <= bit_reverse5(out_count);
-
-                if (out_count == 5'd31) begin
-                    out_count <= 5'd0;
-                    out_active <= symbol_done;
-                end else begin
-                    out_count <= out_count + 5'd1;
-                end
-            end else if (symbol_done) begin
-                out_count <= 5'd0;
-                out_active <= 1'b1;
-            end
+        end else if (stage5_valid) begin
+            sdf_out_idx_br_r <= bit_reverse5(out_count);
+            out_count <= out_count + 5'd1;
         end
     end
-
-    function integer get_stage_wf;
-        input integer stage;
-        begin
-            case (stage)
-                0: get_stage_wf = WF_STAGE1;
-                1: get_stage_wf = WF_STAGE2;
-                2: get_stage_wf = WF_STAGE3;
-                3: get_stage_wf = WF_STAGE4;
-                default: get_stage_wf = WF_STAGE5;
-            endcase
-        end
-    endfunction
 
     function [4:0] bit_reverse5;
         input [4:0] value;
@@ -186,22 +167,144 @@ module sdf_fft32 #(
             bit_reverse5 = {value[0], value[1], value[2], value[3], value[4]};
         end
     endfunction
+endmodule
 
-    function signed [DATA_W-1:0] mult_q;
-        input signed [DATA_W-1:0] x;
-        input signed [DATA_W-1:0] y;
-        reg signed [2*DATA_W-1:0] product;
-        reg signed [2*DATA_W-1:0] mag;
-        begin
-            product = x * y;
-            if (product < 0) begin
-                mag = -product;
-                mult_q = -(mag >>> FRAC_W);
-            end else begin
-                mult_q = product >>> FRAC_W;
+module sdf_stage #(
+    parameter DATA_W = 24,
+    parameter FRAC_W = 16,
+    parameter WF_STAGE = 9,
+    parameter WF_TWIDDLE = 9,
+    parameter DEPTH = 16,
+    parameter PERIOD = 32,
+    parameter CTR_BIT = 4,
+    parameter LOW_MASK = 4'hf,
+    parameter PHASE_SHIFT = 0
+) (
+    input  wire clk,
+    input  wire rst_n,
+    input  wire valid_in,
+    input  wire signed [DATA_W-1:0] stage_in_re,
+    input  wire signed [DATA_W-1:0] stage_in_im,
+    output wire valid_out,
+    output wire signed [DATA_W-1:0] stage_out_re,
+    output wire signed [DATA_W-1:0] stage_out_im
+);
+    reg signed [DATA_W-1:0] delay_re [0:DEPTH-1];
+    reg signed [DATA_W-1:0] delay_im [0:DEPTH-1];
+    reg [DEPTH-1:0] valid_pipe;
+    reg [4:0] cnt;
+    reg valid_out_r;
+    reg signed [DATA_W-1:0] stage_out_re_r;
+    reg signed [DATA_W-1:0] stage_out_im_r;
+
+    wire active = valid_in || (|valid_pipe);
+    wire ctr = cnt[CTR_BIT];
+    wire [3:0] phase_base = cnt[3:0] & LOW_MASK;
+    wire [3:0] tw_phase = phase_base << PHASE_SHIFT;
+
+    wire signed [DATA_W-1:0] delay_out_re = delay_re[DEPTH-1];
+    wire signed [DATA_W-1:0] delay_out_im = delay_im[DEPTH-1];
+
+    wire signed [DATA_W-1:0] pe_upper_re;
+    wire signed [DATA_W-1:0] pe_upper_im;
+    wire signed [DATA_W-1:0] pe_lower_re;
+    wire signed [DATA_W-1:0] pe_lower_im;
+
+    wire signed [DATA_W-1:0] tw_re_full;
+    wire signed [DATA_W-1:0] tw_im_full;
+    wire signed [DATA_W-1:0] tw_re_q = trunc_to_wf(tw_re_full, WF_TWIDDLE);
+    wire signed [DATA_W-1:0] tw_im_q = trunc_to_wf(tw_im_full, WF_TWIDDLE);
+    wire signed [DATA_W-1:0] tw_prod_re;
+    wire signed [DATA_W-1:0] tw_prod_im;
+    wire mult_bypass = (tw_phase == 4'd0);
+    wire signed [DATA_W-1:0] tw_result_re = mult_bypass ? pe_lower_re : tw_prod_re;
+    wire signed [DATA_W-1:0] tw_result_im = mult_bypass ? pe_lower_im : tw_prod_im;
+
+    wire signed [DATA_W-1:0] delay_in_re = ctr ? tw_result_re : pe_upper_re;
+    wire signed [DATA_W-1:0] delay_in_im = ctr ? tw_result_im : pe_upper_im;
+
+    assign valid_out = valid_out_r;
+    assign stage_out_re = stage_out_re_r;
+    assign stage_out_im = stage_out_im_r;
+
+    pe #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .WF_STAGE(WF_STAGE)
+    ) u_pe (
+        .ctr_i(ctr),
+        .upper_re(delay_out_re),
+        .upper_im(delay_out_im),
+        .lower_re(stage_in_re),
+        .lower_im(stage_in_im),
+        .upper_out_re(pe_upper_re),
+        .upper_out_im(pe_upper_im),
+        .lower_out_re(pe_lower_re),
+        .lower_out_im(pe_lower_im)
+    );
+
+    twiddle_rom32 #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W)
+    ) u_twiddle_rom32 (
+        .phase(tw_phase),
+        .tw_re(tw_re_full),
+        .tw_im(tw_im_full)
+    );
+
+    complex_mult #(
+        .DATA_W(DATA_W),
+        .FRAC_W(FRAC_W),
+        .OUT_WF(WF_STAGE)
+    ) u_complex_mult (
+        .a_re(pe_lower_re),
+        .a_im(pe_lower_im),
+        .b_re(tw_re_q),
+        .b_im(tw_im_q),
+        .y_re(tw_prod_re),
+        .y_im(tw_prod_im)
+    );
+
+    integer i;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            cnt <= 5'd0;
+            valid_pipe <= {DEPTH{1'b0}};
+            valid_out_r <= 1'b0;
+            stage_out_re_r <= {DATA_W{1'b0}};
+            stage_out_im_r <= {DATA_W{1'b0}};
+            for (i = 0; i < DEPTH; i = i + 1) begin
+                delay_re[i] <= {DATA_W{1'b0}};
+                delay_im[i] <= {DATA_W{1'b0}};
             end
+        end else if (active) begin
+            valid_out_r <= valid_pipe[DEPTH-1];
+            valid_pipe[0] <= valid_in;
+            for (i = 1; i < DEPTH; i = i + 1) begin
+                valid_pipe[i] <= valid_pipe[i-1];
+            end
+
+            stage_out_re_r <= ctr ? pe_upper_re : pe_lower_re;
+            stage_out_im_r <= ctr ? pe_upper_im : pe_lower_im;
+
+            delay_re[0] <= delay_in_re;
+            delay_im[0] <= delay_in_im;
+            for (i = 1; i < DEPTH; i = i + 1) begin
+                delay_re[i] <= delay_re[i-1];
+                delay_im[i] <= delay_im[i-1];
+            end
+
+            if (cnt == PERIOD - 1) begin
+                cnt <= 5'd0;
+            end else begin
+                cnt <= cnt + 5'd1;
+            end
+        end else begin
+            cnt <= 5'd0;
+            valid_out_r <= 1'b0;
+            valid_pipe <= {DEPTH{1'b0}};
         end
-    endfunction
+    end
 
     function signed [DATA_W-1:0] trunc_to_wf;
         input signed [DATA_W-1:0] value;
@@ -218,70 +321,6 @@ module sdf_fft32 #(
             end else begin
                 trunc_to_wf = (value >>> drop) <<< drop;
             end
-        end
-    endfunction
-
-    function signed [DATA_W-1:0] twiddle_re;
-        input integer k;
-        begin
-            case (k[3:0])
-                4'd0:  twiddle_re = scale_const(32'sd262144);
-                4'd1:  twiddle_re = scale_const(32'sd257107);
-                4'd2:  twiddle_re = scale_const(32'sd242189);
-                4'd3:  twiddle_re = scale_const(32'sd217965);
-                4'd4:  twiddle_re = scale_const(32'sd185364);
-                4'd5:  twiddle_re = scale_const(32'sd145639);
-                4'd6:  twiddle_re = scale_const(32'sd100318);
-                4'd7:  twiddle_re = scale_const(32'sd51142);
-                4'd8:  twiddle_re = scale_const(32'sd0);
-                4'd9:  twiddle_re = scale_const(-32'sd51142);
-                4'd10: twiddle_re = scale_const(-32'sd100318);
-                4'd11: twiddle_re = scale_const(-32'sd145639);
-                4'd12: twiddle_re = scale_const(-32'sd185364);
-                4'd13: twiddle_re = scale_const(-32'sd217965);
-                4'd14: twiddle_re = scale_const(-32'sd242189);
-                default: twiddle_re = scale_const(-32'sd257107);
-            endcase
-        end
-    endfunction
-
-    function signed [DATA_W-1:0] twiddle_im;
-        input integer k;
-        begin
-            case (k[3:0])
-                4'd0:  twiddle_im = scale_const(32'sd0);
-                4'd1:  twiddle_im = scale_const(-32'sd51142);
-                4'd2:  twiddle_im = scale_const(-32'sd100318);
-                4'd3:  twiddle_im = scale_const(-32'sd145639);
-                4'd4:  twiddle_im = scale_const(-32'sd185364);
-                4'd5:  twiddle_im = scale_const(-32'sd217965);
-                4'd6:  twiddle_im = scale_const(-32'sd242189);
-                4'd7:  twiddle_im = scale_const(-32'sd257107);
-                4'd8:  twiddle_im = scale_const(-32'sd262144);
-                4'd9:  twiddle_im = scale_const(-32'sd257107);
-                4'd10: twiddle_im = scale_const(-32'sd242189);
-                4'd11: twiddle_im = scale_const(-32'sd217965);
-                4'd12: twiddle_im = scale_const(-32'sd185364);
-                4'd13: twiddle_im = scale_const(-32'sd145639);
-                4'd14: twiddle_im = scale_const(-32'sd100318);
-                default: twiddle_im = scale_const(-32'sd51142);
-            endcase
-        end
-    endfunction
-
-    function signed [DATA_W-1:0] scale_const;
-        input signed [31:0] value;
-        integer shift;
-        reg signed [31:0] scaled;
-        begin
-            if (FRAC_W >= 18) begin
-                shift = FRAC_W - 18;
-                scaled = value <<< shift;
-            end else begin
-                shift = 18 - FRAC_W;
-                scaled = value >>> shift;
-            end
-            scale_const = scaled[DATA_W-1:0];
         end
     endfunction
 endmodule

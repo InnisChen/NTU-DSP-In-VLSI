@@ -5,7 +5,7 @@ module tb_fft32_step9;
     localparam DATA_W = `FFT32_DATA_W;
     localparam FRAC_W = `FFT32_FRAC_W;
     localparam CLK_PERIOD = 10;
-    localparam ERR_TOL = 2;
+    localparam ERR_TOL = 0;
 
     reg clk;
     reg rst_n;
