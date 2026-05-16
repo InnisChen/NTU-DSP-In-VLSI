@@ -49,7 +49,6 @@ module bit_reverse_buffer #(
     assign wr_addr = wr_addr_w;
     assign rd_addr = rd_count;
 
-    integer i;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             wr_bank_r <= 1'b0;
@@ -62,12 +61,6 @@ module bit_reverse_buffer #(
             br_valid_out_r <= 1'b0;
             BROutRe_r <= {DATA_W{1'b0}};
             BROutIm_r <= {DATA_W{1'b0}};
-            for (i = 0; i < 32; i = i + 1) begin
-                bank0_re[i] <= {DATA_W{1'b0}};
-                bank0_im[i] <= {DATA_W{1'b0}};
-                bank1_re[i] <= {DATA_W{1'b0}};
-                bank1_im[i] <= {DATA_W{1'b0}};
-            end
         end else begin
             br_valid_out_r <= 1'b0;
 

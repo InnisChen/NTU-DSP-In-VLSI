@@ -336,10 +336,6 @@ module sdf_stage #(
             valid_out_r <= 1'b0;
             stage_out_re_r <= {DATA_W{1'b0}};
             stage_out_im_r <= {DATA_W{1'b0}};
-            for (i = 0; i < DEPTH; i = i + 1) begin
-                delay_re[i] <= {DATA_W{1'b0}};
-                delay_im[i] <= {DATA_W{1'b0}};
-            end
         end else if (active) begin
             valid_out_r <= valid_pipe[DEPTH-1];
             valid_pipe[0] <= valid_in;
