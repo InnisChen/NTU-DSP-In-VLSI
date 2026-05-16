@@ -41,7 +41,11 @@ module tb_bit_reverse_buffer;
     always #(CLK_PERIOD/2) clk = ~clk;
 
     integer i;
+    integer frame;
     integer out_count;
+    integer err_count;
+    integer expected_value;
+    reg expected_rd_bank;
     reg [4:0] br_seq [0:31];
 
     initial begin
@@ -62,6 +66,7 @@ module tb_bit_reverse_buffer;
         SDFOutRe = {DATA_W{1'b0}};
         SDFOutIm = {DATA_W{1'b0}};
         out_count = 0;
+        err_count = 0;
 
         $dumpfile("tb_bit_reverse_buffer.vcd");
         $dumpvars(0, tb_bit_reverse_buffer);
@@ -69,11 +74,13 @@ module tb_bit_reverse_buffer;
         repeat (4) @(negedge clk);
         rst_n = 1'b1;
 
-        for (i = 0; i < 32; i = i + 1) begin
-            @(negedge clk);
-            valid_in = 1'b1;
-            SDFOutRe = {{(DATA_W-5){1'b0}}, br_seq[i]};
-            SDFOutIm = {DATA_W{1'b0}};
+        for (frame = 0; frame < 2; frame = frame + 1) begin
+            for (i = 0; i < 32; i = i + 1) begin
+                @(negedge clk);
+                valid_in = 1'b1;
+                SDFOutRe = br_seq[i];
+                SDFOutIm = {DATA_W{1'b0}};
+            end
         end
 
         @(negedge clk);
@@ -81,16 +88,17 @@ module tb_bit_reverse_buffer;
         SDFOutRe = {DATA_W{1'b0}};
         SDFOutIm = {DATA_W{1'b0}};
 
-        repeat (40) @(negedge clk);
-        if (out_count == 32) begin
+        repeat (80) @(negedge clk);
+        if (out_count == 64 && err_count == 0) begin
             $display("============================================================");
             $display("[PASS] tb_bit_reverse_buffer");
-            $display("       Checked BROut order: 32 samples, 0 mismatches.");
+            $display("       Checked BROut order and ping-pong banks: 64 samples, 0 mismatches.");
             $display("============================================================");
         end else begin
             $display("============================================================");
             $display("[FAIL] tb_bit_reverse_buffer");
-            $display("       Expected 32 BROut samples, got %0d.", out_count);
+            $display("       Expected 64 BROut samples, got %0d.", out_count);
+            $display("       Mismatches: %0d.", err_count);
             $display("============================================================");
         end
         $finish;
@@ -98,8 +106,17 @@ module tb_bit_reverse_buffer;
 
     always @(posedge clk) begin
         if (br_valid_out) begin
-            if (BROutRe[4:0] !== out_count[4:0]) begin
-                $display("[ERROR] BROut order mismatch at %0d, got %0d.", out_count, BROutRe[4:0]);
+            expected_value = out_count % 32;
+            expected_rd_bank = (out_count >= 32);
+            if (BROutRe !== expected_value[DATA_W-1:0]) begin
+                $display("[ERROR] BROut order mismatch at %0d, got %0d, exp %0d.",
+                         out_count, BROutRe, expected_value);
+                err_count = err_count + 1;
+            end
+            if ((expected_value != 31) && (rd_bank !== expected_rd_bank)) begin
+                $display("[ERROR] rd_bank mismatch at %0d, got %0d, exp %0d.",
+                         out_count, rd_bank, expected_rd_bank);
+                err_count = err_count + 1;
             end
             out_count = out_count + 1;
         end

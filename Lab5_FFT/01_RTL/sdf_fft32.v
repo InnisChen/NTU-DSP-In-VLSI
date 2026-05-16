@@ -18,8 +18,7 @@ module sdf_fft32 #(
 
     output wire sdf_valid_out,
     output wire signed [DATA_W-1:0] SDFOutRe,
-    output wire signed [DATA_W-1:0] SDFOutIm,
-    output wire [4:0] sdf_out_idx_br
+    output wire signed [DATA_W-1:0] SDFOutIm
 );
     wire stage1_valid;
     wire stage2_valid;
@@ -47,7 +46,8 @@ module sdf_fft32 #(
         .PERIOD(32),
         .CTR_BIT(4),
         .LOW_MASK(4'hf),
-        .PHASE_SHIFT(0)
+        .PHASE_SHIFT(0),
+        .TWIDDLE_MODE(0)
     ) u_stage1 (
         .clk(clk),
         .rst_n(rst_n),
@@ -68,7 +68,8 @@ module sdf_fft32 #(
         .PERIOD(16),
         .CTR_BIT(3),
         .LOW_MASK(4'h7),
-        .PHASE_SHIFT(1)
+        .PHASE_SHIFT(1),
+        .TWIDDLE_MODE(1)
     ) u_stage2 (
         .clk(clk),
         .rst_n(rst_n),
@@ -89,7 +90,8 @@ module sdf_fft32 #(
         .PERIOD(8),
         .CTR_BIT(2),
         .LOW_MASK(4'h3),
-        .PHASE_SHIFT(2)
+        .PHASE_SHIFT(2),
+        .TWIDDLE_MODE(2)
     ) u_stage3 (
         .clk(clk),
         .rst_n(rst_n),
@@ -110,7 +112,8 @@ module sdf_fft32 #(
         .PERIOD(4),
         .CTR_BIT(1),
         .LOW_MASK(4'h1),
-        .PHASE_SHIFT(3)
+        .PHASE_SHIFT(3),
+        .TWIDDLE_MODE(3)
     ) u_stage4 (
         .clk(clk),
         .rst_n(rst_n),
@@ -131,7 +134,8 @@ module sdf_fft32 #(
         .PERIOD(2),
         .CTR_BIT(0),
         .LOW_MASK(4'h0),
-        .PHASE_SHIFT(0)
+        .PHASE_SHIFT(0),
+        .TWIDDLE_MODE(4)
     ) u_stage5 (
         .clk(clk),
         .rst_n(rst_n),
@@ -143,30 +147,9 @@ module sdf_fft32 #(
         .stage_out_im(stage5_im)
     );
 
-    reg [4:0] out_count;
-    reg [4:0] sdf_out_idx_br_r;
-
     assign sdf_valid_out = stage5_valid;
     assign SDFOutRe = stage5_re;
     assign SDFOutIm = stage5_im;
-    assign sdf_out_idx_br = sdf_out_idx_br_r;
-
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            out_count <= 5'd0;
-            sdf_out_idx_br_r <= 5'd0;
-        end else if (stage5_valid) begin
-            sdf_out_idx_br_r <= bit_reverse5(out_count);
-            out_count <= out_count + 5'd1;
-        end
-    end
-
-    function [4:0] bit_reverse5;
-        input [4:0] value;
-        begin
-            bit_reverse5 = {value[0], value[1], value[2], value[3], value[4]};
-        end
-    endfunction
 endmodule
 
 module sdf_stage #(
@@ -178,7 +161,8 @@ module sdf_stage #(
     parameter PERIOD = 32,
     parameter CTR_BIT = 4,
     parameter LOW_MASK = 4'hf,
-    parameter PHASE_SHIFT = 0
+    parameter PHASE_SHIFT = 0,
+    parameter TWIDDLE_MODE = 0
 ) (
     input  wire clk,
     input  wire rst_n,
@@ -210,15 +194,8 @@ module sdf_stage #(
     wire signed [DATA_W-1:0] pe_lower_re;
     wire signed [DATA_W-1:0] pe_lower_im;
 
-    wire signed [DATA_W-1:0] tw_re_full;
-    wire signed [DATA_W-1:0] tw_im_full;
-    wire signed [DATA_W-1:0] tw_re_q = trunc_to_wf(tw_re_full, WF_TWIDDLE);
-    wire signed [DATA_W-1:0] tw_im_q = trunc_to_wf(tw_im_full, WF_TWIDDLE);
-    wire signed [DATA_W-1:0] tw_prod_re;
-    wire signed [DATA_W-1:0] tw_prod_im;
-    wire mult_bypass = (tw_phase == 4'd0);
-    wire signed [DATA_W-1:0] tw_result_re = mult_bypass ? pe_lower_re : tw_prod_re;
-    wire signed [DATA_W-1:0] tw_result_im = mult_bypass ? pe_lower_im : tw_prod_im;
+    wire signed [DATA_W-1:0] tw_result_re;
+    wire signed [DATA_W-1:0] tw_result_im;
 
     wire signed [DATA_W-1:0] delay_in_re = ctr ? tw_result_re : pe_upper_re;
     wire signed [DATA_W-1:0] delay_in_im = ctr ? tw_result_im : pe_upper_im;
@@ -243,27 +220,113 @@ module sdf_stage #(
         .lower_out_im(pe_lower_im)
     );
 
-    twiddle_rom32 #(
-        .DATA_W(DATA_W),
-        .FRAC_W(FRAC_W)
-    ) u_twiddle_rom32 (
-        .phase(tw_phase),
-        .tw_re(tw_re_full),
-        .tw_im(tw_im_full)
-    );
+    generate
+        if (TWIDDLE_MODE == 0) begin : gen_twiddle_full
+            wire signed [DATA_W-1:0] tw_re_full;
+            wire signed [DATA_W-1:0] tw_im_full;
+            wire signed [DATA_W-1:0] tw_re_q = trunc_to_wf(tw_re_full, WF_TWIDDLE);
+            wire signed [DATA_W-1:0] tw_im_q = trunc_to_wf(tw_im_full, WF_TWIDDLE);
+            wire signed [DATA_W-1:0] tw_prod_re;
+            wire signed [DATA_W-1:0] tw_prod_im;
 
-    complex_mult #(
-        .DATA_W(DATA_W),
-        .FRAC_W(FRAC_W),
-        .OUT_WF(WF_STAGE)
-    ) u_complex_mult (
-        .a_re(pe_lower_re),
-        .a_im(pe_lower_im),
-        .b_re(tw_re_q),
-        .b_im(tw_im_q),
-        .y_re(tw_prod_re),
-        .y_im(tw_prod_im)
-    );
+            twiddle_rom32 #(
+                .DATA_W(DATA_W),
+                .FRAC_W(FRAC_W)
+            ) u_twiddle_rom32 (
+                .phase(tw_phase),
+                .tw_re(tw_re_full),
+                .tw_im(tw_im_full)
+            );
+
+            complex_mult #(
+                .DATA_W(DATA_W),
+                .FRAC_W(FRAC_W),
+                .OUT_WF(WF_STAGE)
+            ) u_complex_mult (
+                .a_re(pe_lower_re),
+                .a_im(pe_lower_im),
+                .b_re(tw_re_q),
+                .b_im(tw_im_q),
+                .y_re(tw_prod_re),
+                .y_im(tw_prod_im)
+            );
+
+            assign tw_result_re = (tw_phase == 4'd0) ? pe_lower_re : tw_prod_re;
+            assign tw_result_im = (tw_phase == 4'd0) ? pe_lower_im : tw_prod_im;
+        end else if (TWIDDLE_MODE == 1) begin : gen_twiddle_stage2
+            wire signed [DATA_W-1:0] tw_re_full;
+            wire signed [DATA_W-1:0] tw_im_full;
+            wire signed [DATA_W-1:0] tw_re_q = trunc_to_wf(tw_re_full, WF_TWIDDLE);
+            wire signed [DATA_W-1:0] tw_im_q = trunc_to_wf(tw_im_full, WF_TWIDDLE);
+            wire signed [DATA_W-1:0] tw_prod_re;
+            wire signed [DATA_W-1:0] tw_prod_im;
+
+            twiddle_rom32_stage2 #(
+                .DATA_W(DATA_W),
+                .FRAC_W(FRAC_W)
+            ) u_twiddle_rom32_stage2 (
+                .phase_idx(phase_base[2:0]),
+                .tw_re(tw_re_full),
+                .tw_im(tw_im_full)
+            );
+
+            complex_mult #(
+                .DATA_W(DATA_W),
+                .FRAC_W(FRAC_W),
+                .OUT_WF(WF_STAGE)
+            ) u_complex_mult (
+                .a_re(pe_lower_re),
+                .a_im(pe_lower_im),
+                .b_re(tw_re_q),
+                .b_im(tw_im_q),
+                .y_re(tw_prod_re),
+                .y_im(tw_prod_im)
+            );
+
+            assign tw_result_re = (phase_base[2:0] == 3'd0) ? pe_lower_re : tw_prod_re;
+            assign tw_result_im = (phase_base[2:0] == 3'd0) ? pe_lower_im : tw_prod_im;
+        end else if (TWIDDLE_MODE == 2) begin : gen_twiddle_stage3
+            wire signed [DATA_W-1:0] tw_re_full;
+            wire signed [DATA_W-1:0] tw_im_full;
+            wire signed [DATA_W-1:0] tw_re_q = trunc_to_wf(tw_re_full, WF_TWIDDLE);
+            wire signed [DATA_W-1:0] tw_im_q = trunc_to_wf(tw_im_full, WF_TWIDDLE);
+            wire signed [DATA_W-1:0] tw_prod_re;
+            wire signed [DATA_W-1:0] tw_prod_im;
+
+            twiddle_rom32_stage3 #(
+                .DATA_W(DATA_W),
+                .FRAC_W(FRAC_W)
+            ) u_twiddle_rom32_stage3 (
+                .phase_idx(phase_base[1:0]),
+                .tw_re(tw_re_full),
+                .tw_im(tw_im_full)
+            );
+
+            complex_mult #(
+                .DATA_W(DATA_W),
+                .FRAC_W(FRAC_W),
+                .OUT_WF(WF_STAGE)
+            ) u_complex_mult (
+                .a_re(pe_lower_re),
+                .a_im(pe_lower_im),
+                .b_re(tw_re_q),
+                .b_im(tw_im_q),
+                .y_re(tw_prod_re),
+                .y_im(tw_prod_im)
+            );
+
+            assign tw_result_re = (phase_base[1:0] == 2'd0) ? pe_lower_re : tw_prod_re;
+            assign tw_result_im = (phase_base[1:0] == 2'd0) ? pe_lower_im : tw_prod_im;
+        end else if (TWIDDLE_MODE == 3) begin : gen_twiddle_stage4
+            wire phase8 = phase_base[0];
+
+            assign tw_result_re = phase8 ? pe_lower_im : pe_lower_re;
+            assign tw_result_im = phase8 ? -pe_lower_re : pe_lower_im;
+        end else begin : gen_twiddle_stage5
+            assign tw_result_re = pe_lower_re;
+            assign tw_result_im = pe_lower_im;
+        end
+    endgenerate
 
     integer i;
     always @(posedge clk or negedge rst_n) begin
@@ -306,7 +369,7 @@ module sdf_stage #(
         end
     end
 
-    function signed [DATA_W-1:0] trunc_to_wf;
+    function automatic signed [DATA_W-1:0] trunc_to_wf;
         input signed [DATA_W-1:0] value;
         input integer wf;
         integer drop;

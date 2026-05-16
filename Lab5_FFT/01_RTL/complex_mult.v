@@ -20,7 +20,7 @@ module complex_mult #(
     assign y_re = trunc_to_wf(arbr - aibi, OUT_WF);
     assign y_im = trunc_to_wf(arbi + aibr, OUT_WF);
 
-    function signed [DATA_W-1:0] mult_q;
+    function automatic signed [DATA_W-1:0] mult_q;
         input signed [DATA_W-1:0] x;
         input signed [DATA_W-1:0] y;
         reg signed [2*DATA_W-1:0] product;
@@ -36,7 +36,7 @@ module complex_mult #(
         end
     endfunction
 
-    function signed [DATA_W-1:0] trunc_to_wf;
+    function automatic signed [DATA_W-1:0] trunc_to_wf;
         input signed [DATA_W-1:0] value;
         input integer wf;
         integer drop;

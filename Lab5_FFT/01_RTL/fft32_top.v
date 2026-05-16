@@ -24,7 +24,6 @@ module fft32_top #(
     output wire signed [DATA_W-1:0] BROutRe,
     output wire signed [DATA_W-1:0] BROutIm
 );
-    wire [4:0] sdf_out_idx_br;
     wire [4:0] br_out_idx;
     wire wr_bank;
     wire rd_bank;
@@ -48,8 +47,7 @@ module fft32_top #(
         .FFTInIm(FFTInIm),
         .sdf_valid_out(sdf_valid_out),
         .SDFOutRe(SDFOutRe),
-        .SDFOutIm(SDFOutIm),
-        .sdf_out_idx_br(sdf_out_idx_br)
+        .SDFOutIm(SDFOutIm)
     );
 
     bit_reverse_buffer #(

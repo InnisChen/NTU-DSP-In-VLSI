@@ -25,7 +25,7 @@ module pe #(
     assign lower_out_re = ctr_i ? diff_re : upper_re;
     assign lower_out_im = ctr_i ? diff_im : upper_im;
 
-    function signed [DATA_W-1:0] trunc_to_wf;
+    function automatic signed [DATA_W-1:0] trunc_to_wf;
         input signed [DATA_W-1:0] value;
         input integer wf;
         integer drop;

@@ -139,7 +139,7 @@ module bit_reverse_buffer #(
         end
     end
 
-    function [4:0] bit_reverse5;
+    function automatic [4:0] bit_reverse5;
         input [4:0] value;
         begin
             bit_reverse5 = {value[0], value[1], value[2], value[3], value[4]};

@@ -15,7 +15,7 @@ module twiddle_rom32 #(
     assign tw_re = q1 ? scale_const(base_cos(phase)) : -scale_const(base_cos(mirror_phase));
     assign tw_im = q1 ? -scale_const(base_sin(phase)) : -scale_const(base_sin(mirror_phase));
 
-    function signed [31:0] base_cos;
+    function automatic signed [31:0] base_cos;
         input [3:0] k;
         begin
             case (k)
@@ -33,7 +33,7 @@ module twiddle_rom32 #(
         end
     endfunction
 
-    function signed [31:0] base_sin;
+    function automatic signed [31:0] base_sin;
         input [3:0] k;
         begin
             case (k)
@@ -51,7 +51,115 @@ module twiddle_rom32 #(
         end
     endfunction
 
-    function signed [DATA_W-1:0] scale_const;
+    function automatic signed [DATA_W-1:0] scale_const;
+        input signed [31:0] value;
+        integer shift;
+        reg signed [31:0] scaled;
+        begin
+            if (FRAC_W >= 18) begin
+                shift = FRAC_W - 18;
+                scaled = value <<< shift;
+            end else begin
+                shift = 18 - FRAC_W;
+                scaled = value >>> shift;
+            end
+            scale_const = scaled[DATA_W-1:0];
+        end
+    endfunction
+endmodule
+
+module twiddle_rom32_stage2 #(
+    parameter DATA_W = 24,
+    parameter FRAC_W = 16
+) (
+    input  wire [2:0] phase_idx,
+    output reg signed [DATA_W-1:0] tw_re,
+    output reg signed [DATA_W-1:0] tw_im
+);
+    always @* begin
+        case (phase_idx)
+            3'd0: begin
+                tw_re = scale_const(32'sd262144);
+                tw_im = scale_const(32'sd0);
+            end
+            3'd1: begin
+                tw_re = scale_const(32'sd242189);
+                tw_im = scale_const(-32'sd100318);
+            end
+            3'd2: begin
+                tw_re = scale_const(32'sd185364);
+                tw_im = scale_const(-32'sd185364);
+            end
+            3'd3: begin
+                tw_re = scale_const(32'sd100318);
+                tw_im = scale_const(-32'sd242189);
+            end
+            3'd4: begin
+                tw_re = scale_const(32'sd0);
+                tw_im = scale_const(-32'sd262144);
+            end
+            3'd5: begin
+                tw_re = scale_const(-32'sd100318);
+                tw_im = scale_const(-32'sd242189);
+            end
+            3'd6: begin
+                tw_re = scale_const(-32'sd185364);
+                tw_im = scale_const(-32'sd185364);
+            end
+            default: begin
+                tw_re = scale_const(-32'sd242189);
+                tw_im = scale_const(-32'sd100318);
+            end
+        endcase
+    end
+
+    function automatic signed [DATA_W-1:0] scale_const;
+        input signed [31:0] value;
+        integer shift;
+        reg signed [31:0] scaled;
+        begin
+            if (FRAC_W >= 18) begin
+                shift = FRAC_W - 18;
+                scaled = value <<< shift;
+            end else begin
+                shift = 18 - FRAC_W;
+                scaled = value >>> shift;
+            end
+            scale_const = scaled[DATA_W-1:0];
+        end
+    endfunction
+endmodule
+
+module twiddle_rom32_stage3 #(
+    parameter DATA_W = 24,
+    parameter FRAC_W = 16
+) (
+    input  wire [1:0] phase_idx,
+    output reg signed [DATA_W-1:0] tw_re,
+    output reg signed [DATA_W-1:0] tw_im
+);
+    always @* begin
+        case (phase_idx)
+            2'd0: begin
+                tw_re = scale_const(32'sd262144);
+                tw_im = scale_const(32'sd0);
+            end
+            2'd1: begin
+                tw_re = scale_const(32'sd185364);
+                tw_im = scale_const(-32'sd185364);
+            end
+            2'd2: begin
+                tw_re = scale_const(32'sd0);
+                tw_im = scale_const(-32'sd262144);
+            end
+            default: begin
+                tw_re = scale_const(-32'sd185364);
+                tw_im = scale_const(-32'sd185364);
+            end
+        endcase
+    end
+
+    function automatic signed [DATA_W-1:0] scale_const;
         input signed [31:0] value;
         integer shift;
         reg signed [31:0] scaled;
