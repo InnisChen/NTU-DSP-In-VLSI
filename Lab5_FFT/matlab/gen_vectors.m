@@ -1,5 +1,8 @@
-function vector_info = gen_vectors(root_dir, x32, x96, wf_stage, wf_twiddle, data_w, frac_w)
+function vector_info = gen_vectors(root_dir, x32, x96, wf_stage, wf_twiddle, data_w, frac_w, twiddle_w)
 %GEN_VECTORS Generate RTL input and golden .dat files.
+    if nargin < 8
+        twiddle_w = data_w;
+    end
     dat_dir = fullfile(root_dir, '01_RTL', 'src');
     if ~exist(dat_dir, 'dir')
         mkdir(dat_dir);
@@ -23,10 +26,10 @@ function vector_info = gen_vectors(root_dir, x32, x96, wf_stage, wf_twiddle, dat
 
     twiddle = exp(-1j * 2 * pi * (0:15).' / 32);
     twiddle_q = quantize_trunc(twiddle, wf_twiddle);
-    write_complex_dat(fullfile(dat_dir, 'twiddle_rom32'), twiddle_q, data_w, frac_w);
+    write_complex_dat(fullfile(dat_dir, 'twiddle_rom32'), twiddle_q, twiddle_w, wf_twiddle);
 
-    write_params(fullfile(dat_dir, 'fft32_params.vh'), data_w, frac_w, wf_stage, wf_twiddle, dat_dir);
-    write_params(fullfile(root_dir, '00_TESTBED', 'fft32_params.vh'), data_w, frac_w, wf_stage, wf_twiddle, dat_dir);
+    write_params(fullfile(dat_dir, 'fft32_params.vh'), data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, dat_dir);
+    write_params(fullfile(root_dir, '00_TESTBED', 'fft32_params.vh'), data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, dat_dir);
 
     vector_info.dat_dir = dat_dir;
     vector_info.idx_br = idx_br;
@@ -34,6 +37,7 @@ function vector_info = gen_vectors(root_dir, x32, x96, wf_stage, wf_twiddle, dat
     vector_info.golden_br32 = golden_br32;
     vector_info.golden_sdf96 = golden_sdf96;
     vector_info.golden_br96 = golden_br96;
+    vector_info.twiddle_w = twiddle_w;
 end
 
 function write_complex_dat(stem, x, data_w, frac_w)
@@ -41,7 +45,7 @@ function write_complex_dat(stem, x, data_w, frac_w)
     write_dat_hex([stem '_im.dat'], imag(x), data_w, frac_w);
 end
 
-function write_params(filename, data_w, frac_w, wf_stage, wf_twiddle, dat_dir)
+function write_params(filename, data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, dat_dir)
     fid = fopen(filename, 'w');
     assert(fid > 0, 'Cannot open output file: %s', filename);
     cleaner = onCleanup(@() fclose(fid));
@@ -50,6 +54,7 @@ function write_params(filename, data_w, frac_w, wf_stage, wf_twiddle, dat_dir)
     fprintf(fid, '`define FFT32_PARAMS_VH\n');
     fprintf(fid, '`define FFT32_DATA_W %d\n', data_w);
     fprintf(fid, '`define FFT32_FRAC_W %d\n', frac_w);
+    fprintf(fid, '`define FFT32_TWIDDLE_W %d\n', twiddle_w);
     dat_dir_v = strrep(dat_dir, '\', '/');
     fprintf(fid, '`define FFT32_DAT_DIR "%s"\n', dat_dir_v);
     for s = 1:5

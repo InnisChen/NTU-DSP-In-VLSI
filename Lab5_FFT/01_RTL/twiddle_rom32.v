@@ -1,12 +1,12 @@
 `timescale 1ns/1ps
 
 module twiddle_rom32 #(
-    parameter DATA_W = 24,
-    parameter FRAC_W = 16
+    parameter TWIDDLE_W = 11,
+    parameter TWIDDLE_FRAC_W = 9
 ) (
     input  wire [3:0] phase,
-    output wire signed [DATA_W-1:0] tw_re,
-    output wire signed [DATA_W-1:0] tw_im
+    output wire signed [TWIDDLE_W-1:0] tw_re,
+    output wire signed [TWIDDLE_W-1:0] tw_im
 );
     wire [4:0] mirror_phase_ext = 5'd16 - {1'b0, phase};
     wire [3:0] mirror_phase = mirror_phase_ext[3:0];
@@ -51,30 +51,35 @@ module twiddle_rom32 #(
         end
     endfunction
 
-    function automatic signed [DATA_W-1:0] scale_const;
+    function automatic signed [TWIDDLE_W-1:0] scale_const;
         input signed [31:0] value;
         integer shift;
         reg signed [31:0] scaled;
+        reg signed [31:0] mag;
         begin
-            if (FRAC_W >= 18) begin
-                shift = FRAC_W - 18;
+            if (TWIDDLE_FRAC_W >= 18) begin
+                shift = TWIDDLE_FRAC_W - 18;
                 scaled = value <<< shift;
+            end else if (value < 0) begin
+                shift = 18 - TWIDDLE_FRAC_W;
+                mag = -value;
+                scaled = -(mag >>> shift);
             end else begin
-                shift = 18 - FRAC_W;
+                shift = 18 - TWIDDLE_FRAC_W;
                 scaled = value >>> shift;
             end
-            scale_const = scaled[DATA_W-1:0];
+            scale_const = scaled[TWIDDLE_W-1:0];
         end
     endfunction
 endmodule
 
 module twiddle_rom32_stage2 #(
-    parameter DATA_W = 24,
-    parameter FRAC_W = 16
+    parameter TWIDDLE_W = 11,
+    parameter TWIDDLE_FRAC_W = 9
 ) (
     input  wire [2:0] phase_idx,
-    output reg signed [DATA_W-1:0] tw_re,
-    output reg signed [DATA_W-1:0] tw_im
+    output reg signed [TWIDDLE_W-1:0] tw_re,
+    output reg signed [TWIDDLE_W-1:0] tw_im
 );
     always @* begin
         case (phase_idx)
@@ -113,30 +118,35 @@ module twiddle_rom32_stage2 #(
         endcase
     end
 
-    function automatic signed [DATA_W-1:0] scale_const;
+    function automatic signed [TWIDDLE_W-1:0] scale_const;
         input signed [31:0] value;
         integer shift;
         reg signed [31:0] scaled;
+        reg signed [31:0] mag;
         begin
-            if (FRAC_W >= 18) begin
-                shift = FRAC_W - 18;
+            if (TWIDDLE_FRAC_W >= 18) begin
+                shift = TWIDDLE_FRAC_W - 18;
                 scaled = value <<< shift;
+            end else if (value < 0) begin
+                shift = 18 - TWIDDLE_FRAC_W;
+                mag = -value;
+                scaled = -(mag >>> shift);
             end else begin
-                shift = 18 - FRAC_W;
+                shift = 18 - TWIDDLE_FRAC_W;
                 scaled = value >>> shift;
             end
-            scale_const = scaled[DATA_W-1:0];
+            scale_const = scaled[TWIDDLE_W-1:0];
         end
     endfunction
 endmodule
 
 module twiddle_rom32_stage3 #(
-    parameter DATA_W = 24,
-    parameter FRAC_W = 16
+    parameter TWIDDLE_W = 11,
+    parameter TWIDDLE_FRAC_W = 9
 ) (
     input  wire [1:0] phase_idx,
-    output reg signed [DATA_W-1:0] tw_re,
-    output reg signed [DATA_W-1:0] tw_im
+    output reg signed [TWIDDLE_W-1:0] tw_re,
+    output reg signed [TWIDDLE_W-1:0] tw_im
 );
     always @* begin
         case (phase_idx)
@@ -159,19 +169,24 @@ module twiddle_rom32_stage3 #(
         endcase
     end
 
-    function automatic signed [DATA_W-1:0] scale_const;
+    function automatic signed [TWIDDLE_W-1:0] scale_const;
         input signed [31:0] value;
         integer shift;
         reg signed [31:0] scaled;
+        reg signed [31:0] mag;
         begin
-            if (FRAC_W >= 18) begin
-                shift = FRAC_W - 18;
+            if (TWIDDLE_FRAC_W >= 18) begin
+                shift = TWIDDLE_FRAC_W - 18;
                 scaled = value <<< shift;
+            end else if (value < 0) begin
+                shift = 18 - TWIDDLE_FRAC_W;
+                mag = -value;
+                scaled = -(mag >>> shift);
             end else begin
-                shift = 18 - FRAC_W;
+                shift = 18 - TWIDDLE_FRAC_W;
                 scaled = value >>> shift;
             end
-            scale_const = scaled[DATA_W-1:0];
+            scale_const = scaled[TWIDDLE_W-1:0];
         end
     endfunction
 endmodule

@@ -1,8 +1,9 @@
 `timescale 1ns/1ps
 
 module fft32_top #(
-    parameter DATA_W = 24,
-    parameter FRAC_W = 16,
+    parameter DATA_W = 16,
+    parameter FRAC_W = 9,
+    parameter TWIDDLE_W = 11,
     parameter WF_STAGE1 = 9,
     parameter WF_STAGE2 = 9,
     parameter WF_STAGE3 = 9,
@@ -33,6 +34,7 @@ module fft32_top #(
     sdf_fft32 #(
         .DATA_W(DATA_W),
         .FRAC_W(FRAC_W),
+        .TWIDDLE_W(TWIDDLE_W),
         .WF_STAGE1(WF_STAGE1),
         .WF_STAGE2(WF_STAGE2),
         .WF_STAGE3(WF_STAGE3),

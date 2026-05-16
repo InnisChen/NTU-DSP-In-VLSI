@@ -1,7 +1,8 @@
 `ifndef FFT32_PARAMS_VH
 `define FFT32_PARAMS_VH
-`define FFT32_DATA_W 24
-`define FFT32_FRAC_W 18
+`define FFT32_DATA_W 16
+`define FFT32_FRAC_W 9
+`define FFT32_TWIDDLE_W 11
 `define FFT32_DAT_DIR "C:/Project/DSP in VLSI/Lab5_FFT/01_RTL/src"
 `define FFT32_WF_STAGE1 9
 `define FFT32_WF_STAGE2 9

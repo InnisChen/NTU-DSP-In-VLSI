@@ -86,10 +86,10 @@ title('Step 3: Twiddle ROM SQNR sweep');
 saveas(fig, fullfile(fig_dir, 'step3_twiddle_sqnr.png'));
 close(fig);
 
-% RTL vectors use a stable global binary point. Stage truncation still uses
-% the selected per-stage fractional bits.
-data_w = 24;
-frac_w = 18;
+% RTL vectors use the selected fractional bits plus FFT growth guard bits.
+data_w = 16;
+frac_w = 9;
+twiddle_w = 11;
 
 % Step 8 and Step 9 model-side error plots.  These are the expected
 % fixed-point quantization errors before comparing RTL waveforms.
@@ -114,8 +114,8 @@ save_complex_error_plot(fullfile(fig_dir, 'step9_model_br_error.png'), ...
                         0:95, step9_br_error, ...
                         sprintf('Step 9: MATLAB fixed-point BR error, SQNR = %.2f dB', step9_model_sqnr));
 
-vector_info = gen_vectors(root_dir, x32, x96(:), bit_result.wf_stage, bit_result.wf_twiddle, data_w, frac_w);
-save(fullfile(result_dir, 'rtl_vector_info.mat'), 'vector_info', 'data_w', 'frac_w');
+vector_info = gen_vectors(root_dir, x32, x96(:), bit_result.wf_stage, bit_result.wf_twiddle, data_w, frac_w, twiddle_w);
+save(fullfile(result_dir, 'rtl_vector_info.mat'), 'vector_info', 'data_w', 'frac_w', 'twiddle_w');
 
 fprintf('Step 2 max floating error: %.3e\n', max(step2_abs_err));
 fprintf('Chosen wf_stage: [%s]\n', num2str(bit_result.wf_stage));

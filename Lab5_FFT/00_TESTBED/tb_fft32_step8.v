@@ -30,6 +30,7 @@ module tb_fft32_step8;
     fft32_top #(
         .DATA_W(DATA_W),
         .FRAC_W(FRAC_W),
+        .TWIDDLE_W(`FFT32_TWIDDLE_W),
         .WF_STAGE1(`FFT32_WF_STAGE1),
         .WF_STAGE2(`FFT32_WF_STAGE2),
         .WF_STAGE3(`FFT32_WF_STAGE3),
