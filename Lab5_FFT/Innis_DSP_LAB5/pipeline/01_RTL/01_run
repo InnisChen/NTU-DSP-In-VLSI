@@ -1,0 +1,1 @@
+vcs -full64 -debug_access+all -R +v2k -top tb_fft32_step9 -f file.f

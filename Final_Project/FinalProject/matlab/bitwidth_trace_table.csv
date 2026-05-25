@@ -1,0 +1,14 @@
+signal_group,raw_max_abs,required_signed_bits,chosen_bits,decision
+input_quantized,41939,17,17,OK
+mat_register,43383,17,27,OK
+u_register,4096,14,27,OK
+cordic_input_x,43384,17,27,OK
+cordic_input_y,28281,16,27,OK
+cordic_pre_x,43384,17,27,OK
+cordic_pre_y,28281,16,27,OK
+cordic_iter_x,71443,18,27,OK
+cordic_iter_y,43570,17,27,OK
+gain_product,2843217071,33,45,OK
+gain_output,43384,17,27,OK
+lambda_output_raw,43383,17,17,OK
+vector_output_raw,4058,13,17,OK

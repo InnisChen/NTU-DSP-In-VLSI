@@ -1,0 +1,69 @@
+Bit-width analysis for FinalProject
+
+Selected setting:
+  WI=17, WO=17, FRAC_W=12, ACC_W=27, CORDIC_STAGES=10, ITER_MAX=7
+
+1. Input range
+  max(abs(Matrix)) = 10.2390639632
+  With FRAC_W=12, minimum signed total input width = 17 bits.
+  Therefore WI=17 is the minimum safe input width. WI=16 would overflow Q3.12.
+
+2. Iteration count
+  Chosen ITER_MAX=7 because it is the first bit-true fixed-point iteration count that passes both RMSE criteria; ITER_MAX=7 has max eig 0.005422 and max vec 0.007274
+  Floating-point QR is used only as a convergence pre-check. The final ITER_MAX choice uses bit-true fixed-point RMSE.
+  See iteration_sweep.csv for floating and fixed-point iteration candidates.
+
+3. CORDIC stages
+  Chosen CORDIC_STAGES=10 because it is the lowest-latency passing stage count; STAGES=10 has max eig 0.005422 and max vec 0.007274
+  See cordic_stage_sweep.csv for all stage candidates under the selected wordlength.
+
+4. Internal hardware bit-width trace
+  The table below is measured over all 11 matrices, all 7 QR iterations, all CORDIC micro-rotations.
+  raw_max_abs is the maximum integer magnitude after scaling by 2^FRAC_W where applicable.
+  required_signed_bits is ceil(log2(raw_max_abs+1))+1.
+
+  signal_group                    raw_max_abs req_bits   chosen decision
+  input_quantized                       41939       17       17 OK
+  mat_register                          43383       17       27 OK
+  u_register                             4096       14       27 OK
+  cordic_input_x                        43384       17       27 OK
+  cordic_input_y                        28281       16       27 OK
+  cordic_pre_x                          43384       17       27 OK
+  cordic_pre_y                          28281       16       27 OK
+  cordic_iter_x                         71443       18       27 OK
+  cordic_iter_y                         43570       17       27 OK
+  gain_product                     2843217071       33       45 OK
+  gain_output                           43384       17       27 OK
+  lambda_output_raw                     43383       17       17 OK
+  vector_output_raw                      4058       13       17 OK
+
+5. Final RMSE with selected setting
+  max eigenvalue RMSE = 0.005422023453
+  max eigenvector RMSE = 0.00727421033
+  overflow event count in selected bit-true trace = 0
+  Both are below 1e-2.
+
+6. Counter/control bit-widths
+  rot_idx: 2 bits for 0..2.
+  iter_count: 4 bits in RTL. The selected ITER_MAX=7 only requires 3 bits for 0..6, but 4 bits keeps parameter margin.
+  out_count: 3 bits for 0..3.
+  load_col: 2 bits for 0..2.
+  cordic iter counter: 5 bits in RTL, enough for STAGES up to 31; selected STAGES=10 only needs 4 bits, but 5 keeps parameter margin.
+  direction storage: 3 rotations x CORDIC_STAGES = 30 one-bit direction flags.
+
+7. RMSE pairing and sign convention
+  Eigenvalues are sorted in descending order before RMSE calculation.
+  Eigenvectors are reordered with their eigenvalue pair.
+  If dot(v_computed, v_reference) < 0, the computed eigenvector is multiplied by -1 before RMSE.
+  Eigenvector RMSE is sqrt(sum((V_computed - V_reference).^2, all) / 9).
+
+8. Area-time proxy formula
+  area_proxy = matrix_regs + dir_regs + cordic_regs + cordic_adders + gain_mult + control.
+  matrix_regs = 18 * ACC_W for 9 working-matrix and 9 U_eig registers.
+  dir_regs = 3 * CORDIC_STAGES.
+  cordic_regs = 3 * (2 * ACC_W + CORDIC_STAGES + 8).
+  cordic_adders = 3 * 2 * ACC_W.
+  gain_mult = 3 * ACC_W * 4 as a rough constant-multiplier cost.
+  control = 180 fixed proxy units.
+  cycle_proxy = 3 + ITER_MAX * 12 * (CORDIC_STAGES + 2) + 4.
+  This proxy is used only for pre-synthesis ranking; final AT must use DC area and timing reports.

@@ -1,0 +1,2 @@
+-sverilog ../01_RTL/cordic_pe.v
+-sverilog ../01_RTL/FinalProject.v

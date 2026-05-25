@@ -51,6 +51,12 @@ module tb_fft32_step8;
         .BROutIm(BROutIm)
     );
 
+    `ifdef SDF_SIM
+        initial begin
+            $sdf_annotate("../02_SYN/Netlist/fft32_top.sdf", dut, , , "MAXIMUM");
+        end
+    `endif
+
     always #(CLK_PERIOD/2) clk = ~clk;
 
     integer i;
