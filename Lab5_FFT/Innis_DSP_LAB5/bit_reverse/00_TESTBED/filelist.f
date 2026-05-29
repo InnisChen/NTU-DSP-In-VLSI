@@ -1,2 +1,0 @@
-01_RTL/bit_reverse_buffer.v
-00_TESTBED/tb_bit_reverse_buffer.v

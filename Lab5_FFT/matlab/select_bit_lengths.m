@@ -1,9 +1,5 @@
-function result = select_bit_lengths(x_stream, ref_fft_normal, wf_candidates, target_sqnr, margin_db)
+function result = select_bit_lengths(x_stream, ref_fft_normal, wf_candidates, target_sqnr)
 %SELECT_BIT_LENGTHS Sequentially choose stage and twiddle fractional bits.
-    if nargin < 5
-        margin_db = 1.0;
-    end
-
     x_stream = x_stream(:);
     ref_fft_normal = reshape(ref_fft_normal, 32, []);
     wf_stage = repmat(max(wf_candidates), 1, 5);
@@ -23,10 +19,7 @@ function result = select_bit_lengths(x_stream, ref_fft_normal, wf_candidates, ta
             stage_sqnr(stage, c) = calc_sqnr(ref_fft_normal, X_normal);
         end
 
-        chosen_idx = find(stage_sqnr(stage, :) >= target_sqnr + margin_db, 1, 'first');
-        if isempty(chosen_idx)
-            chosen_idx = find(stage_sqnr(stage, :) >= target_sqnr, 1, 'first');
-        end
+        chosen_idx = find(stage_sqnr(stage, :) >= target_sqnr, 1, 'first');
         if isempty(chosen_idx)
             [~, chosen_idx] = max(stage_sqnr(stage, :));
         end
@@ -42,17 +35,13 @@ function result = select_bit_lengths(x_stream, ref_fft_normal, wf_candidates, ta
         twiddle_sqnr(c) = calc_sqnr(ref_fft_normal, X_normal);
     end
 
-    chosen_twiddle_idx = find(twiddle_sqnr >= target_sqnr + margin_db, 1, 'first');
-    if isempty(chosen_twiddle_idx)
-        chosen_twiddle_idx = find(twiddle_sqnr >= target_sqnr, 1, 'first');
-    end
+    chosen_twiddle_idx = find(twiddle_sqnr >= target_sqnr, 1, 'first');
     if isempty(chosen_twiddle_idx)
         [~, chosen_twiddle_idx] = max(twiddle_sqnr);
     end
 
     result.wf_candidates = wf_candidates;
     result.target_sqnr = target_sqnr;
-    result.margin_db = margin_db;
     result.wf_stage = wf_stage;
     result.stage_sqnr = stage_sqnr;
     result.chosen_stage_sqnr = chosen_stage_sqnr;

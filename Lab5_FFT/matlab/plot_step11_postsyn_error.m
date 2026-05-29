@@ -4,7 +4,7 @@ clear; clc; close all;
 script_dir = fileparts(mfilename('fullpath'));
 root_dir = fileparts(script_dir);
 fig_dir = fullfile(root_dir, 'figure');
-dat_dir = fullfile(root_dir, 'Innis_DSP_LAB5', 'pipeline', '01_RTL', 'src');
+dat_dir = fullfile(root_dir, 'RTL_Code', 'pipeline', '01_RTL', 'src');
 
 if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
 

@@ -7,6 +7,7 @@ fig_dir = fullfile(root_dir, 'figure');
 result_dir = fullfile(script_dir, 'results');
 if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
 if ~exist(result_dir, 'dir'), mkdir(result_dir); end
+write_rtl_vectors = false;
 
 addpath(script_dir);
 
@@ -54,17 +55,19 @@ for sym = 1:3
     x96(:, sym) = ifft(A96(:, sym));
 end
 
-wf_candidates = 9:18;
+wf_candidates = 7:18;
 target_sqnr = 35;
-margin_db = 1.5;
-bit_result = select_bit_lengths(x96(:), A96, wf_candidates, target_sqnr, margin_db);
+bit_result = select_bit_lengths(x96(:), A96, wf_candidates, target_sqnr);
+rtl_wf_stage = [9, 9, 9, 9, 9];
+rtl_wf_twiddle = 9;
 
 writematrix(bit_result.stage_sqnr, fullfile(result_dir, 'step3_stage_sqnr.csv'));
 writematrix([wf_candidates(:), bit_result.twiddle_sqnr(:)], fullfile(result_dir, 'step3_twiddle_sqnr.csv'));
 writematrix([bit_result.wf_stage(:); bit_result.wf_twiddle], fullfile(result_dir, 'chosen_fraction_bits.txt'));
+writematrix([rtl_wf_stage(:); rtl_wf_twiddle], fullfile(result_dir, 'rtl_fraction_bits.txt'));
 save(fullfile(result_dir, 'matlab_results.mat'), ...
      'x32', 'X32_br', 'X32_normal', 'X32_ref', 'step2_abs_err', ...
-     'A96', 'x96', 'bit_result');
+     'A96', 'x96', 'bit_result', 'rtl_wf_stage', 'rtl_wf_twiddle');
 
 for stage = 1:5
     fig = figure('Visible', 'off');
@@ -86,16 +89,23 @@ title('Step 3: Twiddle ROM SQNR sweep');
 saveas(fig, fullfile(fig_dir, 'step3_twiddle_sqnr.png'));
 close(fig);
 
-% RTL vectors use the selected fractional bits plus FFT growth guard bits.
+% RTL implementation keeps the previously verified fractional bits.
 data_w = 16;
 frac_w = 9;
 twiddle_w = 11;
 
-% Step 8 and Step 9 model-side error plots.  These are the expected
-% fixed-point quantization errors before comparing RTL waveforms.
 x32_q = quantize_trunc(x32, frac_w);
 x96_q = quantize_trunc(x96(:), frac_w);
-[X32_fixed_br, ~] = sdf_fft32_fixed(x32_q, bit_result.wf_stage, bit_result.wf_twiddle, true(1, 5), true);
+
+% Store the Step 3 minimum-analysis SQNR separately from the RTL setting.
+[X96_analysis_br, ~] = sdf_fft32_fixed(x96_q, bit_result.wf_stage, bit_result.wf_twiddle, true(1, 5), true);
+X96_analysis_normal = bit_reverse_reorder(X96_analysis_br);
+step3_selected_sqnr = calc_sqnr(A96(:), X96_analysis_normal(:));
+writematrix(step3_selected_sqnr, fullfile(result_dir, 'step3_selected_sqnr.txt'));
+
+% Step 8 and Step 9 model-side error plots use the RTL implementation
+% parameters, so they stay aligned with the unchanged RTL golden vectors.
+[X32_fixed_br, ~] = sdf_fft32_fixed(x32_q, rtl_wf_stage, rtl_wf_twiddle, true(1, 5), true);
 step8_sdf_error = X32_fixed_br(:) - X32_br(:);
 writematrix([(0:31).', real(step8_sdf_error), imag(step8_sdf_error)], ...
             fullfile(result_dir, 'step8_model_sdf_error.csv'));
@@ -103,7 +113,7 @@ save_complex_error_plot(fullfile(fig_dir, 'step8_model_sdf_error.png'), ...
                         0:31, step8_sdf_error, ...
                         'Step 8: MATLAB fixed-point SDF error vs floating SDF');
 
-[X96_fixed_br, ~] = sdf_fft32_fixed(x96_q, bit_result.wf_stage, bit_result.wf_twiddle, true(1, 5), true);
+[X96_fixed_br, ~] = sdf_fft32_fixed(x96_q, rtl_wf_stage, rtl_wf_twiddle, true(1, 5), true);
 X96_fixed_normal = bit_reverse_reorder(X96_fixed_br);
 step9_br_error = X96_fixed_normal(:) - A96(:);
 step9_model_sqnr = calc_sqnr(A96(:), X96_fixed_normal(:));
@@ -114,13 +124,26 @@ save_complex_error_plot(fullfile(fig_dir, 'step9_model_br_error.png'), ...
                         0:95, step9_br_error, ...
                         sprintf('Step 9: MATLAB fixed-point BR error, SQNR = %.2f dB', step9_model_sqnr));
 
-vector_info = gen_vectors(root_dir, x32, x96(:), bit_result.wf_stage, bit_result.wf_twiddle, data_w, frac_w, twiddle_w);
-save(fullfile(result_dir, 'rtl_vector_info.mat'), 'vector_info', 'data_w', 'frac_w', 'twiddle_w');
+if write_rtl_vectors
+    vector_info = gen_vectors(root_dir, x32, x96(:), rtl_wf_stage, rtl_wf_twiddle, data_w, frac_w, twiddle_w);
+    save(fullfile(result_dir, 'rtl_vector_info.mat'), 'vector_info', 'data_w', 'frac_w', 'twiddle_w');
+end
 
 fprintf('Step 2 max floating error: %.3e\n', max(step2_abs_err));
 fprintf('Chosen wf_stage: [%s]\n', num2str(bit_result.wf_stage));
 fprintf('Chosen wf_twiddle: %d\n', bit_result.wf_twiddle);
-fprintf('RTL vectors generated in: %s\n', vector_info.dat_dir);
+fprintf('Step 3 selected SQNR: %.6f dB\n', step3_selected_sqnr);
+fprintf('RTL implementation wf_stage: [%s]\n', num2str(rtl_wf_stage));
+fprintf('RTL implementation wf_twiddle: %d\n', rtl_wf_twiddle);
+fprintf('RTL-parameter Step 9 model SQNR: %.6f dB\n', step9_model_sqnr);
+if write_rtl_vectors
+    fprintf('RTL vectors generated in:\n');
+    for d = 1:numel(vector_info.dat_dirs)
+        fprintf('  %s\n', vector_info.dat_dirs{d});
+    end
+else
+    fprintf('RTL vector generation skipped. Set write_rtl_vectors = true to regenerate RTL .dat files.\n');
+end
 
 function save_complex_error_plot(filename, sample_idx, err, plot_title)
     fig = figure('Visible', 'off');

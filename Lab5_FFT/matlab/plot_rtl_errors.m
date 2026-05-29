@@ -5,7 +5,7 @@ script_dir = fileparts(mfilename('fullpath'));
 root_dir = fileparts(script_dir);
 fig_dir = fullfile(root_dir, 'figure');
 result_dir = fullfile(script_dir, 'results');
-dat_dir = fullfile(root_dir, '01_RTL', 'src');
+dat_dir = fullfile(root_dir, 'RTL_Code', 'non_pipeline', '01_RTL', 'src');
 if ~exist(fig_dir, 'dir'), mkdir(fig_dir); end
 if ~exist(result_dir, 'dir'), mkdir(result_dir); end
 

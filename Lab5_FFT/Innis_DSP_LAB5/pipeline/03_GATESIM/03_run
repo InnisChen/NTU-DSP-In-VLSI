@@ -1,1 +1,0 @@
-vcs -full64 -debug_access+all -R +v2k -top tb_fft32_step9 -f file.f +neg_tchk +sdfverbose -negdelay +define+SDF_SIM | tee gate_sim.log

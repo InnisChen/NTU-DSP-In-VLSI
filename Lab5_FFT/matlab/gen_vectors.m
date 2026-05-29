@@ -3,10 +3,10 @@ function vector_info = gen_vectors(root_dir, x32, x96, wf_stage, wf_twiddle, dat
     if nargin < 8
         twiddle_w = data_w;
     end
-    dat_dir = fullfile(root_dir, '01_RTL', 'src');
-    if ~exist(dat_dir, 'dir')
-        mkdir(dat_dir);
-    end
+    rtl_roots = {
+        fullfile(root_dir, 'RTL_Code', 'non_pipeline')
+        fullfile(root_dir, 'RTL_Code', 'pipeline')
+    };
 
     x32_q = quantize_trunc(x32(:), frac_w);
     x96_q = quantize_trunc(x96(:), frac_w);
@@ -17,21 +17,36 @@ function vector_info = gen_vectors(root_dir, x32, x96, wf_stage, wf_twiddle, dat
     golden_sdf96 = sdf_fft32_fixed(x96_q, wf_stage, wf_twiddle, true(1, 5), true);
     golden_br96 = bit_reverse_reorder(golden_sdf96);
 
-    write_complex_dat(fullfile(dat_dir, 'fftinput32'), x32_q, data_w, frac_w);
-    write_complex_dat(fullfile(dat_dir, 'stream96'), x96_q, data_w, frac_w);
-    write_complex_dat(fullfile(dat_dir, 'golden_sdf32'), golden_sdf32(:), data_w, frac_w);
-    write_complex_dat(fullfile(dat_dir, 'golden_br32'), golden_br32(:), data_w, frac_w);
-    write_complex_dat(fullfile(dat_dir, 'golden_sdf96'), golden_sdf96(:), data_w, frac_w);
-    write_complex_dat(fullfile(dat_dir, 'golden_br96'), golden_br96(:), data_w, frac_w);
-
     twiddle = exp(-1j * 2 * pi * (0:15).' / 32);
     twiddle_q = quantize_trunc(twiddle, wf_twiddle);
-    write_complex_dat(fullfile(dat_dir, 'twiddle_rom32'), twiddle_q, twiddle_w, wf_twiddle);
 
-    write_params(fullfile(dat_dir, 'fft32_params.vh'), data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, dat_dir);
-    write_params(fullfile(root_dir, '00_TESTBED', 'fft32_params.vh'), data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, dat_dir);
+    dat_dirs = cell(size(rtl_roots));
+    for r = 1:numel(rtl_roots)
+        flow_root = rtl_roots{r};
+        dat_dir = fullfile(flow_root, '01_RTL', 'src');
+        if ~exist(dat_dir, 'dir')
+            mkdir(dat_dir);
+        end
 
-    vector_info.dat_dir = dat_dir;
+        write_complex_dat(fullfile(dat_dir, 'fftinput32'), x32_q, data_w, frac_w);
+        write_complex_dat(fullfile(dat_dir, 'stream96'), x96_q, data_w, frac_w);
+        write_complex_dat(fullfile(dat_dir, 'golden_sdf32'), golden_sdf32(:), data_w, frac_w);
+        write_complex_dat(fullfile(dat_dir, 'golden_br32'), golden_br32(:), data_w, frac_w);
+        write_complex_dat(fullfile(dat_dir, 'golden_sdf96'), golden_sdf96(:), data_w, frac_w);
+        write_complex_dat(fullfile(dat_dir, 'golden_br96'), golden_br96(:), data_w, frac_w);
+        write_complex_dat(fullfile(dat_dir, 'twiddle_rom32'), twiddle_q, twiddle_w, wf_twiddle);
+
+        write_params(fullfile(dat_dir, 'fft32_params.vh'), data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, '../01_RTL/src');
+
+        tb_param = fullfile(flow_root, '00_TESTBED', 'fft32_params.vh');
+        if exist(fileparts(tb_param), 'dir')
+            write_params(tb_param, data_w, frac_w, twiddle_w, wf_stage, wf_twiddle, '../01_RTL/src');
+        end
+
+        dat_dirs{r} = dat_dir;
+    end
+
+    vector_info.dat_dirs = dat_dirs;
     vector_info.idx_br = idx_br;
     vector_info.golden_sdf32 = golden_sdf32;
     vector_info.golden_br32 = golden_br32;

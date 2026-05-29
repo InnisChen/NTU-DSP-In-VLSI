@@ -1,1 +1,0 @@
-vcs -full64 -debug_access+all -R +v2k -top tb_bit_reverse_buffer -f file.f
