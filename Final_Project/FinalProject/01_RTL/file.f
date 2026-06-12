@@ -1,3 +1,0 @@
--sverilog ./cordic_pe.v
--sverilog ./FinalProject.v
--sverilog ../00_TESTBED/tb_FinalProject.v
